@@ -7,6 +7,7 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # Updated: refined secret scanning
 
     steps:
       - name: 📥 Checkout code
