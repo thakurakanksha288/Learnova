@@ -22,19 +22,19 @@ export default function Footer() {
             </p>
             {/* Social Links */}
             <div className="flex gap-4 pt-2">
-              <a href="https://twitter.com/learnova" target="_blank" rel="noopener noreferrer"
+              <a href="https://twitter.com/learnova" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer"
                 className="text-slate-400 hover:text-purple-400 transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="https://linkedin.com/company/learnova" target="_blank" rel="noopener noreferrer"
+              <a href="https://linkedin.com/company/learnova" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer"
                 className="text-slate-400 hover:text-purple-400 transition-colors">
                 <Linkedin className="w-5 h-5" />
               </a>
-              <a href="https://github.com/Premshaw23/Learnova" target="_blank" rel="noopener noreferrer"
+              <a href="https://github.com/Premshaw23/Learnova" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer"
                 className="text-slate-400 hover:text-purple-400 transition-colors">
                 <Github className="w-5 h-5" />
               </a>
-              <a href="https://youtube.com/@learnova" target="_blank" rel="noopener noreferrer"
+              <a href="https://youtube.com/@learnova" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer"
                 className="text-slate-400 hover:text-purple-400 transition-colors">
                 <Youtube className="w-5 h-5" />
               </a>

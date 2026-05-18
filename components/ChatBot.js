@@ -743,7 +743,7 @@ const LearnovaChatbot = () => {
               </a>
               <a
                 href={contactInfo.demo}
-                target="_blank"
+                target="_blank" rel="noopener noreferrer" 
                 rel="noopener noreferrer"
                 className={`flex items-center space-x-1 hover:underline ${
                   isDarkMode ? "text-purple-400" : "text-purple-600"
