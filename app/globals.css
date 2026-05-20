@@ -165,6 +165,13 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Shimmer animation for skeleton loading states */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

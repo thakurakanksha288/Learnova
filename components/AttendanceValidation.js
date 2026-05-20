@@ -613,11 +613,11 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         <div className="space-y-4">
           <Button
             onClick={validatePasscode}
-            disabled={!passcode.trim()}
+            disabled={!passcode.trim() || isLoading}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-6 text-lg rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none"
           >
             <Shield className="w-6 h-6 mr-3" />
-            Verify Passcode
+            {isLoading ? "Verifying..." : "Verify Passcode"}
           </Button>
 
           <Button

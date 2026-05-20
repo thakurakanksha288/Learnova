@@ -5,10 +5,13 @@ import * as faceapi from "face-api.js";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import useLabels from "@/components/useLabels"; // MongoDB hook
+import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 
-export default function FaceRecognizer() {
+const MIN_CONFIDENCE_TO_RECORD = 60;
+
+export default function FaceRecognizer({ authUser }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels();
@@ -18,6 +21,7 @@ export default function FaceRecognizer() {
   const [detectedPerson, setDetectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [confidence, setConfidence] = useState(0);
+  const [attendanceState, setAttendanceState] = useState("idle");
 
   const MODEL_URL = "/models";
 
@@ -38,6 +42,7 @@ export default function FaceRecognizer() {
       }
       setMessage("Camera access granted ✅");
       setFinished(false);
+      setAttendanceState("idle");
     } catch (err) {
       // Handle permanent denial gracefully
       if (err.name === "NotAllowedError") {
@@ -216,6 +221,47 @@ export default function FaceRecognizer() {
     }
   }, []);
 
+  useEffect(() => {
+    const persistAttendance = async () => {
+      if (!finished || !detectedPerson || !authUser?.uid) {
+        return;
+      }
+
+      if (confidence < MIN_CONFIDENCE_TO_RECORD) {
+        setAttendanceState("low-confidence");
+        return;
+      }
+
+      const detectedEmail = detectedPerson.email?.trim().toLowerCase();
+      const userEmail = authUser.email?.trim().toLowerCase();
+
+      if (detectedEmail && userEmail && detectedEmail !== userEmail) {
+        setAttendanceState("mismatch");
+        setMessage("Face recognized but does not match your signed-in account.");
+        return;
+      }
+
+      setAttendanceState("saving");
+
+      try {
+        const result = await recordAttendance({
+          userId: authUser.uid,
+          studentName: detectedPerson.name,
+          email: detectedPerson.email || authUser.email,
+          confidenceScore: confidence,
+        });
+
+        setAttendanceState(result.alreadyRecorded ? "already-recorded" : "saved");
+      } catch (err) {
+        console.error("Attendance save error:", err);
+        setAttendanceState("error");
+        setMessage(err.message || "Could not save attendance. Please try again.");
+      }
+    };
+
+    persistAttendance();
+  }, [authUser, confidence, detectedPerson, finished]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-start py-12 px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-slate-900/40 to-slate-900"></div>
@@ -359,6 +405,17 @@ export default function FaceRecognizer() {
               </div>
             )}
           </div>
+
+          {attendanceState === "saved" && (
+            <p className="text-center text-sm font-medium text-emerald-300">
+              Attendance recorded for today.
+            </p>
+          )}
+          {attendanceState === "already-recorded" && (
+            <p className="text-center text-sm font-medium text-amber-300">
+              You have already checked in today.
+            </p>
+          )}
         </div>
       )}
 

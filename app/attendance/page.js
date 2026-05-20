@@ -191,7 +191,7 @@ const AttendancePage = () => {
         </div>
       ) : (
         <div className="pt-16">
-          <FaceRecognizer labels={labels} onBack={handleBackToValidation} />
+          <FaceRecognizer authUser={user} />
         </div>
       )}
     </div>

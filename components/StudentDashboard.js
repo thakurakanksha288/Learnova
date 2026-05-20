@@ -1,3 +1,4 @@
+import SkeletonCard from "@/components/ui/SkeletonCard";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
@@ -30,6 +31,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
+import dynamic from "next/dynamic";
+import ChartSkeleton from "@/components/ui/ChartSkeleton";
+
+const AttendanceHeatmap = dynamic(
+  () => import("./AttendanceHeatmap"),
+  { ssr: false, loading: () => <ChartSkeleton variant="heatmap" /> }
+);
 import { useAuth } from "@/hooks/useAuth";
 
 const StudentDashboard = () => {
@@ -478,6 +486,9 @@ const StudentDashboard = () => {
                 <div className="text-xs text-gray-400">
                   Target: 75% minimum required
                 </div>
+              </div>
+              <div className="w-full min-h-[200px] overflow-hidden">
+                <AttendanceHeatmap recentActivity={recentActivity} />
               </div>
             </div>
 

@@ -7,6 +7,7 @@ import React from "react";
 import { Upload, User, Mail, Hash, Sparkles, CheckCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import NextImage from "next/image";
 
 export default function RegisterPage() {
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function RegisterPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         // ✅ Check for HTTP success status first
-        setRegisteredUser(data.userData);
+        setRegisteredUser(data.data?.user ?? null);
         setName("");
         setRollNo("");
         setEmail(user?.email || ""); // ✅ Reset email to auth user's email
@@ -250,10 +251,13 @@ export default function RegisterPage() {
 
                     {registeredUser.image && (
                       <div className="mt-6">
-                        <Image
-                          src={registeredUser.image || "/placeholder.svg"}
+                        <NextImage
+                          src={registeredUser.image}
                           alt={`${registeredUser.name}'s photo`}
-                          className="w-full rounded-xl shadow-lg border border-white/10"
+                          width={400}
+                          height={400}
+                          unoptimized
+                          className="w-full h-auto rounded-xl shadow-lg border border-white/10"
                         />
                       </div>
                     )}

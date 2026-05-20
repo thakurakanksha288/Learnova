@@ -1,6 +1,39 @@
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { USER_ROLES } from "@/constants/userRoles";
+import { initializeUserStats } from "@/services/statsService";
+
+export const PASSWORD_REQUIREMENTS_MESSAGE =
+  "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
+
+/**
+ * Validates password strength for new accounts.
+ * @param {string} password - Password entered by the user.
+ * @returns {string|null} Error message when invalid, otherwise null.
+ */
+export const validatePasswordStrength = (password) => {
+  if (!password) {
+    return "Password is required";
+  }
+
+  const hasMinimumLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecialCharacter = /[^A-Za-z0-9]/.test(password);
+
+  if (
+    !hasMinimumLength ||
+    !hasUppercase ||
+    !hasLowercase ||
+    !hasNumber ||
+    !hasSpecialCharacter
+  ) {
+    return PASSWORD_REQUIREMENTS_MESSAGE;
+  }
+
+  return null;
+};
 
 /**
  * Returns a user-friendly authentication error message.
@@ -16,7 +49,7 @@ export const getErrorMessage = (errorCode) => {
     case "auth/email-already-in-use":
       return "An account with this email already exists.";
     case "auth/weak-password":
-      return "Password should be at least 6 characters.";
+      return "Password must be 8+ chars with upper, lower, number, and special character.";
     case "auth/invalid-email":
       return "Please enter a valid email address.";
     case "auth/too-many-requests":
@@ -58,6 +91,10 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   }
 
   await setDoc(doc(db, "users", user.uid), userProfile);
+  
+  // Initialize their empty dashboard stats
+  await initializeUserStats(user.uid);
+
   return userProfile;
 };
 
@@ -84,8 +121,12 @@ export const validateForm = (formData, isLogin) => {
 
   if (!password) {
     errors.password = "Password is required";
-  } else if (!isLogin && password.length < 6) {
-    errors.password = "Password must be at least 6 characters";
+  } else if (!isLogin) {
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      errors.password = PASSWORD_REQUIREMENTS_MESSAGE;
+    }
   }
 
   if (!isLogin) {

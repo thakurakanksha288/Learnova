@@ -40,7 +40,10 @@ const [unreadCount, setUnreadCount] = useState(2);
 
   // Handle scroll effect for transparency
   const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollProgressValue = Number.isFinite(scrollProgress) ? scrollProgress : 0;
 
+
+  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
       const progress = Math.min(window.scrollY / 100, 1);
@@ -69,6 +72,20 @@ const [unreadCount, setUnreadCount] = useState(2);
     };
   }, [handleClickOutside]);
 
+  //Fixed Add ESC Key Support
+  useEffect(() => {
+  const handleEscape = (event) => {
+    if (event.key === "Escape") {
+      setIsDropdownOpen(false);
+    }
+  };
+
+  window.addEventListener("keydown", handleEscape);
+  return () => window.removeEventListener("keydown", handleEscape);
+}, []);
+
+
+
   // FIXED: Body scroll management with class-based approach
   useEffect(() => {
     if (isMenuOpen) {
@@ -83,10 +100,9 @@ const [unreadCount, setUnreadCount] = useState(2);
     };
   }, [isMenuOpen]);
 
-  const handleLogout = async () => {
-    await signOut();
-    setIsDropdownOpen(false);
+  useEffect(() => {
     setIsMenuOpen(false);
+ feat/navbar-notification-bell
   };
   const markAsRead = (id) => {
     setNotifications((prev) =>
@@ -99,6 +115,16 @@ const [unreadCount, setUnreadCount] = useState(2);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
   };
+   setIsDropdownOpen(false);
+  }, [pathname]);
+
+ 
+  const handleLogout = async () => {
+  setIsDropdownOpen(false);
+  setIsMenuOpen(false);
+  await signOut();
+};
+
 
   // Get user initials for avatar fallback
   const getUserInitials = (name) => {
@@ -181,18 +207,18 @@ const [unreadCount, setUnreadCount] = useState(2);
   return (
     <>
       {/* Premium gradient background overlay - Fades out as we scroll down to let glassmorphism shine */}
-      <div className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300" 
-           style={{ opacity: 1 - scrollProgress * 0.5 }} />
+       <div className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300" 
+           style={{ opacity: 1 - scrollProgressValue * 0.5 }} />
 
       <nav
         className={`fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out`}
         style={{
-          backgroundColor: `rgba(0, 0, 0, ${scrollProgress * 0.4})`,
-          backdropFilter: `blur(${scrollProgress * 24}px)`,
-          WebkitBackdropFilter: `blur(${scrollProgress * 24}px)`,
-          borderBottom: `1px solid rgba(255, 255, 255, ${scrollProgress * 0.1})`,
-          paddingTop: `${0.5 - scrollProgress * 0.5}rem`,
-          paddingBottom: `${0.5 - scrollProgress * 0.5}rem`,
+          backgroundColor: `rgba(0, 0, 0, ${scrollProgressValue * 0.4})`,
+          backdropFilter: `blur(${scrollProgressValue * 24}px)`,
+          WebkitBackdropFilter: `blur(${scrollProgressValue * 24}px)`,
+          borderBottom: `1px solid rgba(255, 255, 255, ${scrollProgressValue * 0.1})`,
+          paddingTop: `${0.5 - scrollProgressValue * 0.5}rem`,
+          paddingBottom: `${0.5 - scrollProgressValue * 0.5}rem`,
         }}
       >
         {/* Premium shimmer effect - FIXED: Using CSS classes instead of inline styles */}
@@ -222,34 +248,32 @@ const [unreadCount, setUnreadCount] = useState(2);
               </div>
             </Link>
 
-            {/* Enhanced Desktop Navigation - FIXED: Changed breakpoint to sm:flex */}
-            <div className="hidden sm:flex items-center space-x-1">
-             {navigationItems.map((item, index) => {
+            {/* Enhanced Desktop Navigation - FIXED: Removed inline animation styles */}
+            <div className="hidden md:flex items-center space-x-1">
+              {navigationItems.map((item, index) => {
                 const isActive = pathname === item.href;
                 return (
-                <Link
-                key={item.href}
-                href={item.href}
-                className={`relative px-4 py-2 font-medium group overflow-hidden rounded-lg transition-all duration-300 animate-fadeIn-${index}
-                ${
-                  isActive
-                  ? "text-white bg-gradient-to-r from-accent/30 to-blue-500/30"
-                  : "text-white/80 hover:text-white"
-                }`}
-                >
-                <span className="relative z-10">{item.label}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-lg" />
-                <div
-                className={`absolute bottom-0 h-0.5 bg-gradient-to-r from-accent to-blue-500 transition-all duration-300 ${
-                  isActive
-                  ? "left-0 w-full"
-                  : "left-1/2 w-0 group-hover:left-0 group-hover:w-full"
-                  }`}
-                  />
-                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-lg animate-pulse" />
-               </Link>
-               );
-               })}
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`relative px-4 py-2 font-medium group overflow-hidden rounded-lg transition-all duration-300
+                ${isActive
+                        ? "text-white bg-gradient-to-r from-accent/30 to-blue-500/30"
+                        : "text-white/80 hover:text-white"
+                      } `}
+                  >
+                    <span className="relative z-10">{item.label}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-lg" />
+                    <div
+                      className={`absolute bottom-0 h-0.5 bg-gradient-to-r from-accent to-blue-500 transition-all duration-300 ${isActive
+                          ? "left-0 w-full"
+                          : "left-1/2 w-0 group-hover:left-0 group-hover:w-full"
+                        } `}
+                    />
+                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-lg animate-pulse" />
+                  </Link>
+                );
+              })}
               {/* Enhanced Auth Section */}
               {isAuthenticated ? (
                 <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
@@ -323,9 +347,13 @@ const [unreadCount, setUnreadCount] = useState(2);
                   {/* Enhanced User Dropdown */}
                   
                   <div className="relative" ref={dropdownRef}>
+
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center space-x-3 p-2 rounded-xl text-white hover:text-accent transition-all duration-300 group hover:bg-white/5"
+                      aria-haspopup="true"
+                      aria-expanded={isDropdownOpen}
+                      aria-label="User menu"
+                      className="flex items-center space-x-3 p-2 rounded-xl text-white hover:text-accent transition-all duration-300 group hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-accent"
                     >
                       <div className="relative">
                         {/* FIXED: Better image fallback structure */}
@@ -336,19 +364,19 @@ const [unreadCount, setUnreadCount] = useState(2);
                               alt="Profile"
                               width={40}
                               height={40}
-                              className="w-10 h-10 rounded-full border-2 border-accent/50 group-hover:border-accent transition-all duration-300 object-cover group-hover:scale-110 shadow-lg"
+                              className="w-10 h-10 rounded-full border-2 border-accent/50 object-cover"
                               onError={handleImageError}
                             />
                           )}
-                          <div
-                            className={`fallback-avatar absolute inset-0 w-10 h-10 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 group-hover:border-accent transition-all duration-300 shadow-lg group-hover:scale-110 ${
-                              getUserPhoto() ? "hidden" : "flex"
-                            }`}
-                          >
-                            <span className="text-sm font-bold text-white">
-                              {getUserInitials(getUserDisplayName())}
+                          {/*Fixed dropdown avatar class*/}
+
+                          {!getUserPhoto() && (
+                            <div className="absolute inset-0 w-10 h-10 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center">
+                              <span className="text-sm font-bold text-white">
+                                {getUserInitials(getUserDisplayName())}
                             </span>
                           </div>
+                          )}
                         </div>
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-black animate-pulse" />
                       </div>
@@ -359,9 +387,8 @@ const [unreadCount, setUnreadCount] = useState(2);
                         <p className="text-xs text-white/60">{getUserRole()}</p>
                       </div>
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform duration-300 ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`}
+                        className={`h-4 w-4 transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""
+                          } `}
                       />
                     </button>
 
@@ -384,9 +411,8 @@ const [unreadCount, setUnreadCount] = useState(2);
                                 />
                               )}
                               <div
-                                className={`fallback-avatar absolute inset-0 w-12 h-12 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${
-                                  getUserPhoto() ? "hidden" : "flex"
-                                }`}
+                                className={`fallback-avatar absolute inset-0 w-12 h-12 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${getUserPhoto() ? "hidden" : "flex"
+                                  } `}
                               >
                                 <span className="text-sm font-bold text-white">
                                   {getUserInitials(getUserDisplayName())}
@@ -459,7 +485,7 @@ const [unreadCount, setUnreadCount] = useState(2);
             </div>
 
             {/* Enhanced Mobile menu button with User Logo - FIXED: Changed breakpoint to sm:hidden */}
-            <div className="sm:hidden flex items-center space-x-3">
+            <div className="md:hidden flex items-center space-x-3">
               {isAuthenticated && (
                 <div className="relative">
                   <div className="w-9 h-9 relative">
@@ -474,9 +500,8 @@ const [unreadCount, setUnreadCount] = useState(2);
                       />
                     )}
                     <div
-                      className={`fallback-avatar absolute inset-0 w-9 h-9 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-md ${
-                        getUserPhoto() ? "hidden" : "flex"
-                      }`}
+                      className={`fallback-avatar absolute inset-0 w-9 h-9 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-md ${getUserPhoto() ? "hidden" : "flex"
+                        } `}
                     >
                       <span className="text-xs font-bold text-white">
                         {getUserInitials(getUserDisplayName())}
@@ -511,12 +536,12 @@ const [unreadCount, setUnreadCount] = useState(2);
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-49 lg:hidden animate-fadeIn"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-49 md:hidden animate-fadeIn"
             onClick={() => setIsMenuOpen(false)}
           />
 
           {/* Right Side Panel */}
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-br from-black/95 via-gray-900/95 to-black/95 backdrop-blur-2xl border-l border-white/20 z-52 lg:hidden shadow-2xl flex flex-col animate-slideInRight">
+          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-br from-black/95 via-gray-900/95 to-black/95 backdrop-blur-2xl border-l border-white/20 z-52 md:hidden shadow-2xl flex flex-col animate-slideInRight">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
               <div className="flex items-center space-x-3">
@@ -556,9 +581,8 @@ const [unreadCount, setUnreadCount] = useState(2);
                       />
                     )}
                     <div
-                      className={`fallback-avatar absolute inset-0 w-14 h-14 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${
-                        getUserPhoto() ? "hidden" : "flex"
-                      }`}
+                      className={`fallback-avatar absolute inset-0 w-14 h-14 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${getUserPhoto() ? "hidden" : "flex"
+                        } `}
                     >
                       <span className="text-lg font-bold text-white">
                         {getUserInitials(getUserDisplayName())}
@@ -668,7 +692,7 @@ const [unreadCount, setUnreadCount] = useState(2);
               )}
               <div className="text-center">
                 <p className="text-white/40 text-xs">
-                  © 2024 Learnova. All rights reserved.
+                  © {new Date().getFullYear()} Learnova. All rights reserved.
                 </p>
               </div>
             </div>
@@ -677,80 +701,82 @@ const [unreadCount, setUnreadCount] = useState(2);
       )}
 
       <style jsx>{`
-        .overflow-hidden {
-          overflow: hidden !important;
-        }
+   .overflow-hidden {
+  overflow: hidden !important;
+}
+  
+ @keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
 
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%) skewX(-12deg);
-          }
-          100% {
-            transform: translateX(200%) skewX(-12deg);
-          }
-        }
-        .animate-shimmer {
-          animation: shimmer 3s infinite;
-        }
-
-        @keyframes fadeIn {
+@keyframes fadeIn {
           from {
-            opacity: 0;
-          }
+    opacity: 0;
+  }
           to {
-            opacity: 1;
-          }
-        }
+    opacity: 1;
+  }
+}
         .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
+  animation: fadeIn 0.2s ease-out;
+}
 
-        @keyframes slideInRight {
+@keyframes slideInRight {
           from {
-            transform: translateX(100%);
-          }
+    transform: translateX(100%);
+  }
           to {
-            transform: translateX(0);
-          }
-        }
+    transform: translateX(0);
+  }
+}
         .animate-slideInRight {
-          animation: slideInRight 0.2s ease-out;
-        }
+  animation: slideInRight 0.2s ease-out;
+}
 
-        @keyframes slideInFromTop {
+@keyframes slideInFromTop {
           from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
+    opacity: 0;
+    transform: translateY(-8px);
+  }
           to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
         .animate-slideInFromTop {
-          animation: slideInFromTop 0.2s ease-out;
-        }
+  animation: slideInFromTop 0.2s ease-out;
+}
 
         /* Animation delay classes */
-        .animate-fadeIn-0 {
-          animation: fadeIn 0.2s ease-out 0ms both;
-        }
-        .animate-fadeIn-1 {
-          animation: fadeIn 0.2s ease-out 100ms both;
-        }
-        .animate-fadeIn-2 {
-          animation: fadeIn 0.2s ease-out 200ms both;
-        }
-        .animate-fadeIn-delay-0 {
-          animation: fadeIn 0.2s ease-out 0ms both;
-        }
-        .animate-fadeIn-delay-1 {
-          animation: fadeIn 0.2s ease-out 50ms both;
-        }
-        .animate-fadeIn-delay-2 {
-          animation: fadeIn 0.2s ease-out 100ms both;
-        }
-      `}</style>
+.animate-fadeIn-0 {
+  animation: fadeIn 0.2s ease-out 0ms both;
+}
+
+.animate-fadeIn-1 {
+  animation: fadeIn 0.2s ease-out 100ms both;
+}
+
+.animate-fadeIn-2 {
+  animation: fadeIn 0.2s ease-out 200ms both;
+}
+
+.animate-fadeIn-delay-0 {
+  animation: fadeIn 0.2s ease-out 0ms both;
+}
+
+.animate-fadeIn-delay-1 {
+  animation: fadeIn 0.2s ease-out 50ms both;
+}
+
+.animate-fadeIn-delay-2 {
+  animation: fadeIn 0.2s ease-out 100ms both;
+}
+`}</style>
     </>
   );
 }

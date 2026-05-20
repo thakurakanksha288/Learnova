@@ -91,9 +91,27 @@ const nextConfig = {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: "github.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        fs: false,
+        encoding: false,
+      };
+    }
+
+    return config;
   },
 };
 
 export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
-

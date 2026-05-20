@@ -1,5 +1,7 @@
 "use client"
 import React, { useState, useRef, useEffect } from "react";
+import { CONTACT_INFO } from '../constants/contact'; // Note: Adjust path if needed
+
 import {
   Send,
   Bot,
@@ -11,7 +13,7 @@ import {
   Sparkles,
   Moon,
   Sun,
-  Mail, 
+  Mail,
   Phone,
   ExternalLink,
   Settings,
@@ -156,7 +158,7 @@ const LearnovaChatbot = () => {
 
   const contactInfo = {
     email: "shawprem217@gmail.com",
-    phone: "+91-8100483993",
+    phone: CONTACT_INFO.phone,
     website: "https://learnova-web.vercel.app",
     demo: "https://learnova-web.vercel.app/contact",
   };
@@ -191,9 +193,8 @@ const LearnovaChatbot = () => {
     ) {
       return `📋 **Learnova Attendance System**\n\n**Key Features:**\n${learnovaKnowledge.attendance.features
         .map((feature) => `• ${feature}`)
-        .join("\n")}\n\n**Benefits:**\n• ${
-        learnovaKnowledge.attendance.benefits
-      }\n• Works offline with auto-sync\n• Exception handling with teacher approval\n• Real-time transparency for parents\n\n**How it works:**\nPhone Verified → GPS + Time Check → Optional QR Scan → Offline Storage → Server Sync → Final Status\n\nWant to know more about any specific aspect?`;
+        .join("\n")}\n\n**Benefits:**\n• ${learnovaKnowledge.attendance.benefits
+        }\n• Works offline with auto-sync\n• Exception handling with teacher approval\n• Real-time transparency for parents\n\n**How it works:**\nPhone Verified → GPS + Time Check → Optional QR Scan → Offline Storage → Server Sync → Final Status\n\nWant to know more about any specific aspect?`;
     }
 
     // Security queries
@@ -205,9 +206,8 @@ const LearnovaChatbot = () => {
     ) {
       return `🔒 **Security & Privacy Features**\n\n**Advanced Security:**\n${learnovaKnowledge.security.features
         .map((feature) => `• ${feature}`)
-        .join("\n")}\n\n**Privacy Protection:**\n• ${
-        learnovaKnowledge.security.privacy
-      }\n• Anonymous analytics options\n• Right to data deletion\n• Secure data export/import\n\n**Compliance:** GDPR, FERPA, SOC 2, ISO 27001\n\nYour data security is our top priority. Need details about any specific security measure?`;
+        .join("\n")}\n\n**Privacy Protection:**\n• ${learnovaKnowledge.security.privacy
+        }\n• Anonymous analytics options\n• Right to data deletion\n• Secure data export/import\n\n**Compliance:** GDPR, FERPA, SOC 2, ISO 27001\n\nYour data security is our top priority. Need details about any specific security measure?`;
     }
 
     // Activities and engagement
@@ -221,9 +221,8 @@ const LearnovaChatbot = () => {
         .map((type) => `• ${type}`)
         .join(
           "\n"
-        )}\n\n**AI Personalization:**\n• Career goal mapping\n• Skill-based recommendations\n• Adaptive difficulty levels\n• Progress-based suggestions\n\n**Gamification:**\n• Badges and achievement systems\n• Class-wide leaderboards\n• Streak maintenance\n• Peer challenges\n\n**Impact:** ${
-        learnovaKnowledge.activities.impact
-      }\n\nInterested in trying our demo activities?`;
+        )}\n\n**AI Personalization:**\n• Career goal mapping\n• Skill-based recommendations\n• Adaptive difficulty levels\n• Progress-based suggestions\n\n**Gamification:**\n• Badges and achievement systems\n• Class-wide leaderboards\n• Streak maintenance\n• Peer challenges\n\n**Impact:** ${learnovaKnowledge.activities.impact
+        }\n\nInterested in trying our demo activities?`;
     }
 
     // Analytics and dashboards
@@ -337,9 +336,8 @@ const LearnovaChatbot = () => {
   const markdownComponents = {
     strong: ({ children }) => (
       <span
-        className={`font-bold text-sm ${
-          isDarkMode ? "text-purple-400" : "text-purple-600"
-        }`}
+        className={`font-bold text-sm ${isDarkMode ? "text-purple-400" : "text-purple-600"
+          }`}
       >
         {children}
       </span>
@@ -347,9 +345,8 @@ const LearnovaChatbot = () => {
 
     em: ({ children }) => (
       <span
-        className={`italic text-sm ${
-          isDarkMode ? "text-blue-400" : "text-blue-600"
-        }`}
+        className={`italic text-sm ${isDarkMode ? "text-blue-400" : "text-blue-600"
+          }`}
       >
         {children}
       </span>
@@ -362,9 +359,8 @@ const LearnovaChatbot = () => {
     li: ({ children }) => (
       <li className="flex items-start">
         <span
-          className={`mr-2 text-xs ${
-            isDarkMode ? "text-purple-400" : "text-purple-600"
-          }`}
+          className={`mr-2 text-xs ${isDarkMode ? "text-purple-400" : "text-purple-600"
+            }`}
         >
           •
         </span>
@@ -376,11 +372,10 @@ const LearnovaChatbot = () => {
 
     code: ({ children }) => (
       <code
-        className={`px-1 py-0.5 rounded text-xs ${
-          isDarkMode
-            ? "bg-gray-700 text-yellow-300"
-            : "bg-gray-200 text-red-600"
-        }`}
+        className={`px-1 py-0.5 rounded text-xs ${isDarkMode
+          ? "bg-gray-700 text-yellow-300"
+          : "bg-gray-200 text-red-600"
+          }`}
       >
         {children}
       </code>
@@ -533,11 +528,9 @@ const LearnovaChatbot = () => {
 
   return (
     <div
-      className={`fixed bottom-6 sm:right-6 sm:mx-0 mx-auto z-50 ${
-        themeClasses.container
-      } rounded-xl shadow-2xl transition-all duration-300 ${
-        isMinimized ? "w-72 h-16" : "w-96 h-[660px]"
-      } border ${themeClasses.border}`}
+      className={`fixed bottom-6 sm:right-6 sm:mx-0 mx-auto z-50 ${themeClasses.container
+        } rounded-xl shadow-2xl transition-all duration-300 ${isMinimized ? "w-72 h-16" : "w-96 h-[660px]"
+        } border ${themeClasses.border}`}
     >
       {/* Enhanced Header */}
       <div
@@ -594,11 +587,10 @@ const LearnovaChatbot = () => {
                 <button
                   key={id}
                   onClick={() => setCurrentCategory(id)}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
-                    currentCategory === id
-                      ? themeClasses.categoryButtonActive
-                      : themeClasses.categoryButton
-                  }`}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${currentCategory === id
+                    ? themeClasses.categoryButtonActive
+                    : themeClasses.categoryButton
+                    }`}
                 >
                   <Icon size={12} />
                   <span>{label}</span>
@@ -612,30 +604,26 @@ const LearnovaChatbot = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
-                  message.isBot ? "justify-start" : "justify-end"
-                }`}
+                className={`flex ${message.isBot ? "justify-start" : "justify-end"
+                  }`}
               >
                 <div
-                  className={`flex max-w-sm lg:max-w-md ${
-                    message.isBot ? "flex-row" : "flex-row-reverse"
-                  } items-end space-x-2`}
+                  className={`flex max-w-sm lg:max-w-md ${message.isBot ? "flex-row" : "flex-row-reverse"
+                    } items-end space-x-2`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.isBot
-                        ? themeClasses.message.avatar.bot
-                        : themeClasses.message.avatar.user
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.isBot
+                      ? themeClasses.message.avatar.bot
+                      : themeClasses.message.avatar.user
+                      }`}
                   >
                     {message.isBot ? <Bot size={16} /> : <User size={16} />}
                   </div>
                   <div
-                    className={`px-4 py-3 rounded-2xl shadow-sm ${
-                      message.isBot
-                        ? themeClasses.message.bot
-                        : themeClasses.message.user
-                    }`}
+                    className={`px-4 py-3 rounded-2xl shadow-sm ${message.isBot
+                      ? themeClasses.message.bot
+                      : themeClasses.message.user
+                      }`}
                   >
                     {message.isBot ? (
                       // Use in your ReactMarkdown
@@ -665,9 +653,8 @@ const LearnovaChatbot = () => {
               <div className="space-y-4">
                 <div className="text-center">
                   <p
-                    className={`text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-600"
-                    }`}
+                    className={`text-sm font-medium mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-600"
+                      }`}
                   >
                     💡 Popular questions about{" "}
                     {categories.find((c) => c.id === currentCategory)?.label}:
@@ -707,9 +694,8 @@ const LearnovaChatbot = () => {
                       ></div>
                     </div>
                     <span
-                      className={`text-xs ${
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
+                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
                     >
                       Nova is thinking...
                     </span>
@@ -725,18 +711,16 @@ const LearnovaChatbot = () => {
             <div className="flex items-center justify-center space-x-4 text-xs">
               <a
                 href={`mailto:${contactInfo.email}`}
-                className={`flex items-center space-x-1 hover:underline ${
-                  isDarkMode ? "text-blue-400" : "text-blue-600"
-                }`}
+                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-blue-400" : "text-blue-600"
+                  }`}
               >
                 <Mail size={12} />
                 <span>Email Support</span>
               </a>
               <a
                 href={`tel:${contactInfo.phone}`}
-                className={`flex items-center space-x-1 hover:underline ${
-                  isDarkMode ? "text-green-400" : "text-green-600"
-                }`}
+                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-green-400" : "text-green-600"
+                  }`}
               >
                 <Phone size={12} />
                 <span>Call Us</span>
@@ -745,9 +729,8 @@ const LearnovaChatbot = () => {
                 href={contactInfo.demo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex items-center space-x-1 hover:underline ${
-                  isDarkMode ? "text-purple-400" : "text-purple-600"
-                }`}
+                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-purple-400" : "text-purple-600"
+                  }`}
               >
                 <ExternalLink size={12} />
                 <span>Live Demo</span>
@@ -790,18 +773,16 @@ const LearnovaChatbot = () => {
                   <div className="flex items-center space-x-1 text-xs">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span
-                      className={`${
-                        isDarkMode ? "text-green-400" : "text-green-600"
-                      }`}
+                      className={`${isDarkMode ? "text-green-400" : "text-green-600"
+                        }`}
                     >
                       AI Enhanced
                     </span>
                   </div>
                 )}
                 <p
-                  className={`text-xs ${
-                    isDarkMode ? "text-gray-500" : "text-gray-400"
-                  }`}
+                  className={`text-xs ${isDarkMode ? "text-gray-500" : "text-gray-400"
+                    }`}
                 >
                   Powered by Nova AI
                 </p>

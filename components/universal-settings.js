@@ -238,17 +238,21 @@ export default function UniversalSettings() {
   };
 
   const saveSettings = async () => {
-    setIsLoading(true);
-    try {
-      console.log("Saving settings:", settings);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setHasChanges(false);
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...settings, userId: user?.uid }),
+    });
+    if (!response.ok) throw new Error("Failed to save settings");
+    setHasChanges(false);
+  } catch (error) {
+    console.error("Failed to save settings:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const resetSettings = () => {
     setSettings({

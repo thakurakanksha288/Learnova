@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
 import { ROLE_CONFIG, USER_ROLES } from "@/constants/userRoles";
+import { getPasswordStrength } from "@/utils/passwordStrength";
 
 export default function AuthForm({
   isLogin,
@@ -24,6 +25,10 @@ export default function AuthForm({
   onForgotPassword,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const passwordStrength = useMemo(
+    () => getPasswordStrength(password),
+    [password]
+  );
 
   const clearError = (field) => {
     if (errors[field]) {
@@ -195,6 +200,11 @@ export default function AuthForm({
             </div>
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+            )}
+            {!isLogin && !errors.password && (
+              <p className="text-gray-400 text-xs mt-1">
+                Min 8 characters with upper, lower, number, and special character.
+              </p>
             )}
           </div>
 

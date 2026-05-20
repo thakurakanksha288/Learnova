@@ -42,6 +42,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
+import dynamic from "next/dynamic";
+import ChartSkeleton from "@/components/ui/ChartSkeleton";
+
+const AttendanceTrendsChart = dynamic(
+  () => import("@/components/charts/AttendanceTrendsChart"),
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
+);
 
 const InstituteDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -563,6 +570,17 @@ const InstituteDashboard = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Attendance Trends Chart */}
+      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+          <Activity className="w-6 h-6 text-blue-400 mr-2" />
+          Weekly Attendance Trends
+        </h3>
+        <div className="w-full aspect-video min-h-[300px] overflow-hidden">
+          <AttendanceTrendsChart />
         </div>
       </div>
     </div>

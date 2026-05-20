@@ -11,6 +11,7 @@ import AuthForm from "@/components/AuthForm";
 import HeroSection from "@/components/HeroSection";
 import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import toast from "react-hot-toast";
 
 // Services and Utils
 import {
@@ -23,7 +24,7 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState("");
 
@@ -105,20 +106,23 @@ export default function AuthPage() {
         result = await loginWithEmail(email, password, selectedRole);
       } else {
         result = await signupWithEmail(email, password, selectedRole, {
-          fullName,
-          instituteName,
+            fullName,
+            instituteName,
         });
       }
 
       if (result.success) {
+        setShowRoleSelection(true);
+
         if (result.needsVerification) {
-          router.push("/verify");
+            router.push("/verify");
         } else if (result.needsProfile) {
-          router.push("/profile");
+            router.push("/profile");
         } else {
-          redirectBasedOnRole(result.userData.role, router);
+            redirectBasedOnRole(result.userData.role, router);
         }
-      } else {
+      }
+      else {
         setErrors({ submit: result.error });
       }
     } catch (err) {
@@ -185,7 +189,7 @@ export default function AuthPage() {
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
-        alert("Password reset email sent! Check your inbox and spam folder.");
+        toast.success("Password reset email sent! Check your inbox and spam folder.");
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
