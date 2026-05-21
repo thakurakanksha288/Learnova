@@ -23,7 +23,15 @@ const deleteCookie = (name) => {
 /**
  * Provides authentication state and user profile information.
  * Tracks Firebase authentication changes and exposes auth-related utilities.
- * @returns {Object} Authentication state, user profile data, loading state, errors, and helper methods.
+ * @returns {{
+ *   user: Object|null,
+ *   userProfile: Object|null,
+ *   loading: boolean,
+ *   error: string|null,
+ *   signOut: Function,
+ *   isAuthenticated: boolean,
+ *   hasProfile: boolean
+ * }} Authentication state and helper methods.
  */
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -31,36 +39,13 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Setup reactive cookie updates based on user and userProfile state
   useEffect(() => {
-    const updateCookies = async () => {
-      if (user) {
-        try {
-          const idToken = await user.getIdToken();
-          setCookie("authToken", idToken);
-          if (userProfile) {
-            setCookie("userRole", userProfile.role);
-          } else {
-            deleteCookie("userRole");
-          }
-        } catch (err) {
-          console.error("Error updating cookies reactively:", err);
-        }
-      } else {
-        deleteCookie("authToken");
-        deleteCookie("userRole");
-      }
-    };
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
 
-    updateCookies();
-  }, [user, userProfile]);
-
-  useEffect(() => {
-     if (!auth) {
-    setLoading(false);
-    return;
-  }
-    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
           // Get user profile from Firestore
@@ -119,4 +104,3 @@ export const useAuth = () => {
     hasProfile: !!userProfile,
   };
 };
-

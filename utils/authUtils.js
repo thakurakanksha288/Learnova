@@ -8,7 +8,10 @@ import {
   validatePassword,
   validateName,
 } from "./formValidation";
-
+/**
+ * Default password requirement validation message.
+ * @type {string}
+ */
 export const PASSWORD_REQUIREMENTS_MESSAGE =
   "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
 
