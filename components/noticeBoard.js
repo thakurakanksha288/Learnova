@@ -483,13 +483,13 @@ const SmartNoticeBoard = () => {
               ) : filteredNotices.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bell className="w-8 h-8 text-gray-400" />
+                    <BellOff className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">
-                    No matching notices
+                    No Notices Yet
                   </h3>
                   <p className="text-gray-500">
-                    Try adjusting your search or filters to find what you're looking for.
+                    Check back later for updates.
                   </p>
                 </div>
               ) : (

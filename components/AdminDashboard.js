@@ -23,12 +23,33 @@ import {
   DollarSign,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
+import dynamic from "next/dynamic";
+import ChartSkeleton from "@/components/ui/ChartSkeleton";
+import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+
+const AttendanceTrendsChart = dynamic(
+  () => import("@/components/charts/AttendanceTrendsChart"),
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
+);
+
+const EngagementChart = dynamic(
+  () => import("@/components/charts/EngagementChart"),
+  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
 
 const SuperAdminDashboard = () => {
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedInstitute, setSelectedInstitute] = useState("all");
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const [systemStatus, setSystemStatus] = useState("operational");
+  useEffect(() => {
+  const loadingTimer = setTimeout(() => {
+    setLoading(false);
+  }, 1500);
+
+  return () => clearTimeout(loadingTimer);
+}, []);
 
   // Platform-wide statistics
   const platformStats = {
@@ -322,6 +343,29 @@ const SuperAdminDashboard = () => {
               <span className="text-sm text-gray-300">CDN Response</span>
               <span className="text-sm font-medium text-green-400">15ms</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Analytics Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+            <TrendingUp className="w-5 h-5 text-blue-400" />
+            Platform Attendance Trends
+          </h3>
+          <div className="w-full aspect-video min-h-[300px] overflow-hidden">
+            <AttendanceTrendsChart />
+          </div>
+        </div>
+
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+            <Activity className="w-5 h-5 text-green-400" />
+            Student Engagement Overview
+          </h3>
+          <div className="w-full min-h-[300px] overflow-hidden flex items-center justify-center">
+            <EngagementChart />
           </div>
         </div>
       </div>
@@ -817,6 +861,10 @@ const SuperAdminDashboard = () => {
       </div>
     </div>
   );
+
+  if (loading) {
+  return <DashboardSkeleton />;
+}
 
   return (
     <div className="min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16">

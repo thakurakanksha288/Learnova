@@ -11,6 +11,7 @@ import AuthForm from "@/components/AuthForm";
 import HeroSection from "@/components/HeroSection";
 import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import toast from "react-hot-toast";
 
 // Services and Utils
 import {
@@ -23,7 +24,7 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState("");
 
@@ -105,24 +106,30 @@ export default function AuthPage() {
         result = await loginWithEmail(email, password, selectedRole);
       } else {
         result = await signupWithEmail(email, password, selectedRole, {
-          fullName,
-          instituteName,
+            fullName,
+            instituteName,
         });
       }
 
-      if (result.success) {
-        if (result.needsVerification) {
-          router.push("/verify");
-        } else if (result.needsProfile) {
-          router.push("/profile");
-        } else {
-          redirectBasedOnRole(result.userData.role, router);
-        }
+      if (result.needsVerification) {
+        toast.success("Verification email sent! Please check your inbox.");
+        setShowRoleSelection(true);
+        router.push("/verify");
+      } else if (result.needsProfile) {
+        toast.success("Account created successfully!");
+        setShowRoleSelection(true);
+        router.push("/profile");
+      } else if (result.success) {
+        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
+        setShowRoleSelection(true);
+        redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error });
+        toast.error(result.error || "Authentication failed. Please try again.");
+        setErrors({ submit: result.error || "Something went wrong. Please try again." });
       }
     } catch (err) {
       console.error("Auth error:", err);
+      toast.error("An unexpected error occurred. Please try again.");
       setErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
       setIsLoading(false);
@@ -155,12 +162,15 @@ export default function AuthPage() {
       });
 
       if (result.success) {
+        toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
+        toast.error(result.error || "Google authentication failed.");
         setErrors({ submit: result.error });
       }
     } catch (err) {
       console.error("Google auth error:", err);
+      toast.error("An unexpected error occurred. Please try again.");
       setErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
       setIsLoading(false);
@@ -185,7 +195,7 @@ export default function AuthPage() {
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
-        alert("Password reset email sent! Check your inbox and spam folder.");
+        toast.success("Password reset email sent! Check your inbox and spam folder.");
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {

@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import React from "react";
+import toast from "react-hot-toast";
 import { Upload, User, Mail, Hash, Sparkles, CheckCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import NextImage from "next/image";
+import { validateRequired, validateName } from "@/utils/formValidation";
 
 export default function RegisterPage() {
   useEffect(() => {
@@ -34,6 +37,26 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setRegisteredUser(null);
+
+    // Validate using centralized form validators
+    const nameValidation = validateName(name, "Full Name");
+    if (nameValidation !== true) {
+      setError(nameValidation);
+      return;
+    }
+
+    const rollNoValidation = validateRequired(rollNo, "Roll Number");
+    if (rollNoValidation !== true) {
+      setError(rollNoValidation);
+      return;
+    }
+
+    const photoValidation = validateRequired(photo, "Profile Photo");
+    if (photoValidation !== true) {
+      setError(photoValidation);
+      return;
+    }
+
     setIsLoading(true);
 
     const formData = new FormData();
@@ -45,24 +68,34 @@ export default function RegisterPage() {
     }
 
     try {
+      const token = await user?.getIdToken();
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/register", {
         method: "POST",
+        headers,
         body: formData,
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
         // ✅ Check for HTTP success status first
-        setRegisteredUser(data.userData);
+        setRegisteredUser(data.data?.user ?? null);
         setName("");
         setRollNo("");
         setEmail(user?.email || ""); // ✅ Reset email to auth user's email
         setPhoto(null);
+        toast.success("Registration successful!");
       } else {
         setError(data.error || "An unknown error occurred."); // ✅ Provide a default error message
+        toast.error(data.error || "Registration failed. Please try again.");
       }
     } catch (err) {
       setError("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -250,10 +283,13 @@ export default function RegisterPage() {
 
                     {registeredUser.image && (
                       <div className="mt-6">
-                        <Image
-                          src={registeredUser.image || "/placeholder.svg"}
+                        <NextImage
+                          src={registeredUser.image}
                           alt={`${registeredUser.name}'s photo`}
-                          className="w-full rounded-xl shadow-lg border border-white/10"
+                          width={400}
+                          height={400}
+                          unoptimized
+                          className="w-full h-auto rounded-xl shadow-lg border border-white/10"
                         />
                       </div>
                     )}

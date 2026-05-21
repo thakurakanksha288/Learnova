@@ -1,31 +1,62 @@
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function GET(request) {
   try {
-    // Get the authorization header
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    // Verify Firebase token
     const decodedToken = await verifyFirebaseToken(token);
 
     if (!decodedToken) {
-      return Response.json({ message: "Unauthorized" }, { status: 401 });
+      return jsonError("Unauthorized", 401);
     }
 
-    // Connect to database
+    const profile = await getUserProfile(decodedToken.uid);
+
+    if (!profile) {
+      return jsonError("User profile not found", 404);
+    }
+
     const db = await connectDb();
+    const collection = db.collection("exceptions");
+    const query = { status: "pending" };
 
-    const exceptions = await db
-      .collection("exceptions")
-      .find({ status: "pending" })
-      .sort({ createdAt: -1 })
-      .toArray();
+    // Fetch total document count under query
+    const total = await collection.countDocuments(query);
 
-    return Response.json({ exceptions }, { status: 200 });
+    let exceptions;
+
+    if (profile.role === "admin" || profile.role === "teacher") {
+      exceptions = await db
+        .collection("exceptions")
+        .find({ status: "pending" })
+        .sort({ createdAt: -1 })
+        .toArray();
+    } else if (profile.role === "student") {
+      exceptions = await db
+        .collection("exceptions")
+        .find({ status: "pending", studentEmail: decodedToken.email })
+        .sort({ createdAt: -1 })
+        .toArray();
+    } else {
+      return jsonError("Forbidden", 403);
+    }
+
+    const totalPages = Math.ceil(total / limit);
+
+    return jsonSuccess({
+      exceptions,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    }, 200);
   } catch (error) {
     console.error("Exception fetch error:", error);
-    return Response.json({ message: "Internal server error" }, { status: 500 });
+    return jsonError("Internal server error", 500);
   }
 }

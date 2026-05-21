@@ -1,44 +1,54 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function POST(request) {
   try {
-    // Get the authorization header
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    // Verify Firebase token
     const decodedToken = await verifyFirebaseToken(token);
 
     if (!decodedToken) {
-      return Response.json({ message: "Unauthorized" }, { status: 401 });
+      return jsonError("Unauthorized", 401);
     }
 
-    // Parse request body
     const body = await request.json();
+    const { reason, details, date } = body;
 
-    // Connect to database
+    if (!reason || typeof reason !== "string" || reason.trim() === "") {
+      return jsonError("Reason is required and must be a string", 400);
+    }
+    if (!details || typeof details !== "string" || details.trim() === "") {
+      return jsonError("Details are required and must be a string", 400);
+    }
+    if (!date || typeof date !== "string" || date.trim() === "") {
+      return jsonError("Date is required and must be a string", 400);
+    }
+
     const db = await connectDb();
 
     const exceptionData = {
-      ...body,
+      reason: reason.trim(),
+      details: details.trim(),
+      date: date.trim(),
       studentEmail: decodedToken.email,
-      status: "pending", // Default status
+      status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const result = await db.collection("exceptions").insertOne(exceptionData);
 
-    return Response.json(
+    return jsonSuccess(
       {
-        message: "Exception request created successfully",
         id: result.insertedId,
+        message: "Exception request created successfully",
       },
-      { status: 201 }
+      201,
     );
   } catch (error) {
     console.error("Exception creation error:", error);
-    return Response.json({ message: "Internal server error" }, { status: 500 });
+    return jsonError("Internal server error", 500);
   }
 }

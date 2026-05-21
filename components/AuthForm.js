@@ -1,7 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
 import { ROLE_CONFIG, USER_ROLES } from "@/constants/userRoles";
+import { getPasswordStrength } from "@/utils/passwordStrength";
+import {
+  validateRequired,
+  validateEmail,
+  validatePassword,
+  validateName,
+} from "@/utils/formValidation";
 
 export default function AuthForm({
   isLogin,
@@ -24,10 +31,33 @@ export default function AuthForm({
   onForgotPassword,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const passwordStrength = useMemo(
+    () => getPasswordStrength(password),
+    [password]
+  );
 
   const clearError = (field) => {
     if (errors[field]) {
-      setErrors({ ...errors, [field]: "" });
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const validateField = (field, value) => {
+    let result = true;
+    if (field === "fullName") {
+      result = validateName(value, "Full Name");
+    } else if (field === "instituteName") {
+      result = validateRequired(value, "Institute Name");
+    } else if (field === "email") {
+      result = validateEmail(value);
+    } else if (field === "password") {
+      result = isLogin ? validateRequired(value, "Password") : validatePassword(value);
+    }
+
+    if (result !== true) {
+      setErrors((prev) => ({ ...prev, [field]: result }));
+    } else {
+      clearError(field);
     }
   };
 
@@ -101,6 +131,7 @@ export default function AuthForm({
                     setFullName(e.target.value);
                     clearError("fullName");
                   }}
+                  onBlur={(e) => validateField("fullName", e.target.value)}
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
                     errors.fullName ? "border-red-500/50" : "border-gray-600"
                   }`}
@@ -123,6 +154,7 @@ export default function AuthForm({
                       setInstituteName(e.target.value);
                       clearError("instituteName");
                     }}
+                    onBlur={(e) => validateField("instituteName", e.target.value)}
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
                       errors.instituteName
                         ? "border-red-500/50"
@@ -153,6 +185,7 @@ export default function AuthForm({
                   setEmail(e.target.value);
                   clearError("email");
                 }}
+                onBlur={(e) => validateField("email", e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
                   errors.email ? "border-red-500/50" : "border-gray-600"
                 }`}
@@ -177,6 +210,7 @@ export default function AuthForm({
                   setPassword(e.target.value);
                   clearError("password");
                 }}
+                onBlur={(e) => validateField("password", e.target.value)}
                 className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
                   errors.password ? "border-red-500/50" : "border-gray-600"
                 }`}
@@ -195,6 +229,11 @@ export default function AuthForm({
             </div>
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+            )}
+            {!isLogin && !errors.password && (
+              <p className="text-gray-400 text-xs mt-1">
+                Min 8 characters with upper, lower, number, and special character.
+              </p>
             )}
           </div>
 

@@ -1,23 +1,127 @@
-import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
-import { connectDb } from "@/lib/mongodb"; // your DB connection helper
+import { put, del } from "@vercel/blob";
+import { randomUUID } from "crypto";
+import { connectDb } from "@/lib/mongodb";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+
+export const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_ATTEMPTS = 5;
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const normalizeText = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const isValidImageMagicBytes = async (file) => {
+  try {
+    if (typeof file.slice !== "function") return null;
+    const headerBuffer = await file.slice(0, 12).arrayBuffer();
+    const arr = new Uint8Array(headerBuffer);
+    if (arr.length < 4) return null;
+
+    // Check PNG: 89 50 4E 47
+    if (arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4e && arr[3] === 0x47) {
+      return "image/png";
+    }
+
+    // Check JPEG: FF D8 FF
+    if (arr[0] === 0xff && arr[1] === 0xd8 && arr[2] === 0xff) {
+      return "image/jpeg";
+    }
+
+    // Check WebP: RIFF (bytes 0-3) and WEBP (bytes 8-11)
+    if (
+      arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46 &&
+      arr.length >= 12 &&
+      arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50
+    ) {
+      return "image/webp";
+    }
+
+    return null;
+  } catch (err) {
+    return null;
+  }
+};
+
+const getImageExtension = (mimeType) => {
+  switch (mimeType) {
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    case "image/jpeg":
+    default:
+      return "jpg";
+  }
+};
 
 export async function POST(req) {
   try {
     const formData = await req.formData();
-    const name = formData.get("name");
-    const rollNo = formData.get("rollNo");
-    const email = formData.get("email");
+    const name = normalizeText(formData.get("name"));
+    const rollNo = normalizeText(formData.get("rollNo"));
+    const email = normalizeText(formData.get("email")).toLowerCase();
     const file = formData.get("photo");
 
     if (!name || !rollNo || !email || !file) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Name, rollNo, email, and photo are required",
-        },
-        { status: 400 }
-      );
+      return jsonError("Name, rollNo, email, and photo are required", 400);
+    }
+
+    if (!(file instanceof File)) {
+      return jsonError("Photo must be a valid file", 400);
+    }
+
+    if (!EMAIL_PATTERN.test(email)) {
+      return jsonError("Invalid email address", 400);
+    }
+
+    // Rate Limiting Check
+    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const now = Date.now();
+    if (!rateLimitMap.has(ip)) {
+      rateLimitMap.set(ip, []);
+    }
+    const attempts = rateLimitMap.get(ip).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW);
+    attempts.push(now);
+    rateLimitMap.set(ip, attempts);
+
+    if (attempts.length > MAX_ATTEMPTS) {
+      console.warn(`[Rate Limit] Registration rate limit exceeded for IP: ${ip} at ${new Date(now).toISOString()}`);
+      return jsonError("Too many registration attempts. Please try again later.", 429);
+    }
+
+    // Token Authentication & Authorization Check
+    const authorization = req.headers.get("authorization");
+    const token = authorization?.split(" ")[1];
+    const decodedToken = await verifyFirebaseToken(token);
+
+    if (!decodedToken) {
+      return jsonError("Unauthorized", 401);
+    }
+
+    if (decodedToken.email !== email) {
+      return jsonError("Forbidden: You can only register using your authenticated email.", 403);
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return jsonError("File too large. Max size is 5MB.", 413);
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return jsonError("Invalid file type. Only JPEG, PNG, and WebP images are allowed.", 400);
+    }
+
+    const detectedMimeType = await isValidImageMagicBytes(file);
+    if (!detectedMimeType || detectedMimeType !== file.type) {
+      return jsonError("Invalid file content. The file headers do not match the expected image format.", 400);
     }
 
     // Get DB
@@ -25,12 +129,11 @@ export async function POST(req) {
     const users = db.collection("users");
 
     // Check if user already registered
-    const existingUser = await users.findOne({ rollNo });
+    const existingUser = await users.findOne({
+      $or: [{ rollNo }, { email }],
+    });
     if (existingUser) {
-      return NextResponse.json(
-        { success: false, error: "User already registered with a photo" },
-        { status: 409 } // conflict
-      );
+      return jsonError("User already registered with a photo", 409);
     }
 
     // Convert file to buffer
@@ -38,8 +141,9 @@ export async function POST(req) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Generate unique filename
-    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const fileName = `labels/${safeName}/1.jpg`;
+    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_") || "user";
+    const fileExtension = getImageExtension(file.type);
+    const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
 
     // Upload to Vercel Blob
     const blob = await put(fileName, buffer, {
@@ -47,25 +151,33 @@ export async function POST(req) {
       access: "public",
     });
 
-    // Save user record in DB
-    const user = {
-      name,
-      rollNo,
-      email,
-      image: blob.url, // only one photo allowed
-    };
-    await users.insertOne(user);
+    try {
+      // Save user record in DB
+      const user = {
+        name,
+        rollNo,
+        email,
+        image: blob.url,
+      };
+      await users.insertOne(user);
 
-    return NextResponse.json({
-      success: true,
-      message: "User registered successfully",
-      userData: user,
-    });
+      return jsonSuccess(
+        {
+          message: "User registered successfully",
+          user,
+        },
+        201,
+      );
+    } catch (dbError) {
+      try {
+        await del(blob.url);
+      } catch (cleanupError) {
+        console.error("Failed to delete orphaned blob during rollback:", cleanupError);
+      }
+      throw dbError;
+    }
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return jsonError(error.message || "Internal server error", 500);
   }
 }

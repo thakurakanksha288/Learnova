@@ -3,6 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import React, { useState, useRef } from "react";
 import Link from "next/link";
+import { CONTACT_INFO } from '@/constants/contact';
 import {
   Mail,
   Phone,
@@ -112,7 +113,7 @@ export default function Contact() {
     {
       icon: Phone,
       label: "Phone",
-      value: "+91 81004 839XX",
+      value: CONTACT_INFO.phone,
       href: "tel:+919310243800",
       gradient: "from-green-500 to-emerald-500",
     },
@@ -293,11 +294,10 @@ export default function Contact() {
                     {/* Submit Status */}
                     {submitStatus && (
                       <div
-                        className={`p-4 rounded-xl flex items-center gap-3 ${
-                          submitStatus.type === "success"
-                            ? "bg-green-500/20 border border-green-500/30 text-green-300"
-                            : "bg-red-500/20 border border-red-500/30 text-red-300"
-                        }`}
+                        className={`p-4 rounded-xl flex items-center gap-3 ${submitStatus.type === "success"
+                          ? "bg-green-500/20 border border-green-500/30 text-green-300"
+                          : "bg-red-500/20 border border-red-500/30 text-red-300"
+                          }`}
                       >
                         {submitStatus.type === "success" ? (
                           <CheckCircle className="w-5 h-5" />
@@ -346,20 +346,20 @@ export default function Contact() {
                           <info.icon className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                        <p className="text-gray-400 text-sm">{info.label}</p>
+                          <p className="text-gray-400 text-sm">{info.label}</p>
 
-                        {info.href ? (
-                          <a
-                            href={info.href}
-                            className="text-white text-lg font-medium hover:text-accent transition-colors duration-300"
-                          >
-                            {info.value}
-                          </a>
-                        ) : (
-                          <p className="text-white text-lg font-medium">
-                            {info.value}
-                          </p>
-                        )}
+                          {info.href ? (
+                            <a
+                              href={info.href}
+                              className="text-white text-lg font-medium hover:text-accent transition-colors duration-300"
+                            >
+                              {info.value}
+                            </a>
+                          ) : (
+                            <p className="text-white text-lg font-medium">
+                              {info.value}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}

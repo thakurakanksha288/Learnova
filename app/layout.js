@@ -1,4 +1,6 @@
 // 1. Enhanced layout.js with proper structured data for sitelinks
+
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
@@ -7,7 +9,10 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LearnovaChatbot from "@/components/ChatBot";
 import ClientLayout from "@/components/ClientLayout";
+import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
+import ScrollToTop from "@/components/ScrollToTop";
+import BackToTop from "@/components/BackToTop";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,7 +56,7 @@ export const metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Learnova",
-    startupImage: ["icons/apple-touch-icon.png"],
+    startupImage: ["/icons/apple-touch-icon.png"],
   },
   formatDetection: {
     telephone: false,
@@ -99,7 +104,6 @@ export const metadata = {
   },
   other: {
     "google-site-verification": "3qjYnT7GW81-zwJBwv3wJABvxbiSOgDyAlTCKxh9nEs",
-    "theme-color": "#0f172a",
     // Main structured data for website and organization
     "application/ld+json": JSON.stringify([
       {
@@ -220,24 +224,27 @@ export default function RootLayout({ children }) {
         {/* Favicons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
 
         {/* Canonical and sitemap */}
-        <link rel="canonical" href="https://learnova-web.vercel.app" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
       </head>
       <body
         className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased text-white bg-slate-950 min-h-screen`}
       >
         <AuthProvider>
+          <NotificationProvider>
           <Suspense fallback={null}>
             <PageTransition>{children}</PageTransition>
+            <ScrollToTop />
             {/* Chatbot injected globally */}
             <div className="z-50">
               <LearnovaChatbot />
             </div>
+            <Footer />
             <ClientLayout />
+            <BackToTop />
             <Toaster
               position="top-right" // default; see below for options
               toastOptions={{
@@ -247,6 +254,7 @@ export default function RootLayout({ children }) {
               }}
             />
           </Suspense>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

@@ -30,6 +30,7 @@ const Settings = () => {
       </div>
     );
   }
+  
 
   // Prevent flash before redirect
   if (!user || !user.emailVerified) return null;

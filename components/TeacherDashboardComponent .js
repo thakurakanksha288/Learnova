@@ -51,8 +51,22 @@ import {
   Activity,
   Zap,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import ChartSkeleton from "@/components/ui/ChartSkeleton";
+import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+
+const AttendanceTrendsChart = dynamic(
+  () => import("@/components/charts/AttendanceTrendsChart"),
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
+);
+const EngagementChart = dynamic(
+  () => import("@/components/charts/EngagementChart"),
+  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
+
 
 const TeacherDashboard = () => {
+  const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
@@ -243,9 +257,10 @@ const TeacherDashboard = () => {
       }
 
       const data = await response.json();
+      const payload = data.data ?? data;
 
       // Normalize data structure
-      const normalizedRequests = (data.exceptions || []).map((req) => ({
+      const normalizedRequests = (payload.exceptions || []).map((req) => ({
         id: req._id || req.id,
         studentName: req.studentName || req.student || "Unknown Student",
         studentId: req.studentId || req.rollNo || "",
@@ -291,9 +306,10 @@ const TeacherDashboard = () => {
         }
 
         const data = await response.json();
+        const payload = data.data ?? data;
 
         // Normalize data structure
-        const normalizedRequests = (data.exceptions || []).map((req) => ({
+        const normalizedRequests = (payload.exceptions || []).map((req) => ({
           id: req._id || req.id,
           studentName: req.studentName || req.student || "Unknown Student",
           studentId: req.studentId || req.rollNo || "",
@@ -369,7 +385,12 @@ const TeacherDashboard = () => {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => {
+
+  const loadingTimer = setTimeout(() => {
+    setLoading(false);
+  }, 1500);
+
+  const interval = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
 
@@ -397,7 +418,10 @@ const TeacherDashboard = () => {
       setTodayClasses(weeklySchedule[today] || []);
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+  clearInterval(timer);
+  clearTimeout(loadingTimer);
+};
   }, []);
 
   const generatePasscode = () => {
@@ -442,6 +466,10 @@ const TeacherDashboard = () => {
     return user?.email?.[0]?.toUpperCase() || "T";
   };
 
+
+  if (loading) {
+  return <DashboardSkeleton />;
+}
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Passcode Generation Section */}
@@ -1092,47 +1120,17 @@ const TeacherDashboard = () => {
           <h3 className="text-xl font-bold text-white mb-4">
             Attendance Trends
           </h3>
-          <div className="h-64 bg-gray-800/50 rounded-xl flex items-center justify-center border border-gray-700/50">
-            <div className="text-center">
-              <BarChart3 className="w-12 h-12 text-gray-500 mx-auto mb-2" />
-              <p className="text-gray-400">Chart visualization would go here</p>
-            </div>
+          <div className="w-full aspect-video min-h-[300px] overflow-hidden">
+            <AttendanceTrendsChart />
           </div>
         </div>
 
-        {/* Subject Performance */}
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
           <h3 className="text-xl font-bold text-white mb-4">
-            Subject Performance
+            Student Engagement
           </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Data Structures</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-24 h-2 bg-gray-700 rounded-full">
-                  <div className="w-20 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="text-green-400 text-sm">85%</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Web Development</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-24 h-2 bg-gray-700 rounded-full">
-                  <div className="w-18 h-2 bg-blue-400 rounded-full"></div>
-                </div>
-                <span className="text-blue-400 text-sm">78%</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Database Systems</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-24 h-2 bg-gray-700 rounded-full">
-                  <div className="w-22 h-2 bg-purple-400 rounded-full"></div>
-                </div>
-                <span className="text-purple-400 text-sm">92%</span>
-              </div>
-            </div>
+          <div className="w-full min-h-[300px] overflow-hidden flex items-center justify-center">
+            <EngagementChart />
           </div>
         </div>
       </div>

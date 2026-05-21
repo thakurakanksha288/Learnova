@@ -12,36 +12,21 @@ export default function InstallPWA() {
   useEffect(() => {
     setIsMounted(true);
 
-    // Check if running in browser
     if (typeof window === "undefined") return;
 
-    // Register the service worker (sw.js will handle the swe-worker automatically)
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
-        .then((registration) => {
-          console.log(
-            "Service Worker registered successfully:",
-            registration.scope
-          );
-
-          // Check for updates
-          registration.addEventListener("updatefound", () => {
-            console.log("Service Worker update found!");
-          });
-        })
         .catch((error) => {
           console.error("Service Worker registration failed:", error);
         });
     }
 
-    // Check if app is already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
       return;
     }
 
-    // Check if user already dismissed the prompt
     try {
       const dismissed = localStorage.getItem("pwa-install-dismissed");
       if (dismissed) {
@@ -54,15 +39,12 @@ export default function InstallPWA() {
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
-      // Show prompt after 5 seconds
       setTimeout(() => setIsVisible(true), 5000);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Listen for successful installation
     window.addEventListener("appinstalled", () => {
-      console.log("PWA was installed successfully");
       setIsInstalled(true);
       setIsVisible(false);
     });
@@ -79,11 +61,8 @@ export default function InstallPWA() {
       const result = await installPrompt.prompt();
 
       if (result.outcome === "accepted") {
-        console.log("User accepted the install prompt");
         setIsVisible(false);
         setInstallPrompt(null);
-      } else {
-        console.log("User dismissed the install prompt");
       }
     } catch (error) {
       console.error("Error during installation:", error);
@@ -101,7 +80,6 @@ export default function InstallPWA() {
     }
   };
 
-  // Don't render on server
   if (!isMounted) return null;
 
   if (isInstalled || !isVisible || !installPrompt) {
@@ -149,7 +127,6 @@ export default function InstallPWA() {
           </div>
         </div>
 
-        {/* Features list */}
         <div className="mt-4 pt-4 border-t border-white/10">
           <ul className="space-y-2 text-white/70 text-xs">
             <li className="flex items-center gap-2">
