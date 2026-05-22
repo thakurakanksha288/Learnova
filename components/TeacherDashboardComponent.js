@@ -55,6 +55,7 @@ import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
+import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -1128,6 +1129,12 @@ const TeacherDashboard = () => {
           <div className="w-full min-h-[300px] overflow-hidden flex items-center justify-center">
             <EngagementChart />
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 mt-8">
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <AttendanceAnalytics userId={user?.uid} />
         </div>
       </div>
     </div>

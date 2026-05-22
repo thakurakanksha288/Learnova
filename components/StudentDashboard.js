@@ -686,7 +686,12 @@ const StatCard = ({ color, label, value }) => {
         </div>
       )}
 
-      {user && user.uid && <AttendanceAnalytics userId={user.uid} />}
+      {user && user.uid && (
+        <AttendanceAnalytics
+          userId={user.uid}
+          recentActivity={recentActivity}
+        />
+      )}
       {/* KEEP YOUR ENTIRE EXISTING JSX HERE EXACTLY SAME */}
     </div>
   );
