@@ -718,7 +718,7 @@ useEffect(() => {
                 </Button>
               ) : (
                 <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 z font-medium shadow-lg hover:shadow-xl transition-all duration-300 group">
-                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
                     <Sparkles className="h-4 w-4 mr-3 group-hover:animate-spin transition-all duration-300" />
                     Get Started
                   </Link>

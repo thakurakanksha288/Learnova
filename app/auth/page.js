@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Components
 import { Navbar } from "@/components/Navbar";
@@ -24,8 +24,19 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
-  const [isLogin, setIsLogin] = useState(true);
+  return (
+    <Suspense fallback={null}>
+      <AuthPageContent />
+    </Suspense>
+  );
+}
+
+function AuthPageContent() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode");
+
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [isLogin, setIsLogin] = useState(mode !== "signup");
   const [selectedRole, setSelectedRole] = useState("");
 
   // Form state
@@ -41,6 +52,11 @@ export default function AuthPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   const router = useRouter();
+
+  // Sync isLogin state when the URL query parameter changes
+  useEffect(() => {
+    setIsLogin(mode !== "signup");
+  }, [mode]);
 
   useEffect(() => {
     if (analytics) {
