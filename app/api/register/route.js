@@ -59,6 +59,13 @@ export async function POST(req) {
       return jsonError("Name, rollNo, email, and photo are required", 400);
     }
 
+    if (file.size > MAX_FILE_SIZE) {
+      return jsonError("File size exceeds 5MB limit", 400);
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return jsonError("Invalid file type. Only JPEG, PNG, and WebP are allowed", 400);
+    }
+
     // 2. Prevent arbitrary registrations - Must register own email
     if (decodedToken.email !== email) {
       return jsonError("Forbidden: Cannot register face for a different user", 403);
