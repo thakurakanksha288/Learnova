@@ -4,12 +4,25 @@ import { connectDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
+const activeStreams = new Map();
+const MAX_STREAMS_PER_USER = 2;
+
 export async function GET(request) {
   try {
     // Authenticate and establish tenant/role context BEFORE opening stream
     const decodedToken = await authenticateRequest(request);
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
+
+    // Enforce per-user SSE connection limit to prevent MongoDB pool exhaustion
+    const userStreamCount = activeStreams.get(decodedToken.uid) || 0;
+    if (userStreamCount >= MAX_STREAMS_PER_USER) {
+      return new Response(JSON.stringify({ error: "Too many connections. Please close other tabs." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    activeStreams.set(decodedToken.uid, userStreamCount + 1);
     
     let isConnected = true;
 
@@ -37,6 +50,12 @@ export async function GET(request) {
         } catch (error) {
            console.error("Initial fetch error:", error);
            sendEvent("error", { message: "Failed to fetch initial notices" });
+           const count = activeStreams.get(decodedToken.uid);
+           if (count <= 1) {
+             activeStreams.delete(decodedToken.uid);
+           } else {
+             activeStreams.set(decodedToken.uid, count - 1);
+           }
            return controller.close();
         }
 
@@ -100,13 +119,23 @@ export async function GET(request) {
           sendEvent("ping", { time: new Date().toISOString() });
         }, 15000);
 
-        // 4. Clean up completely on disconnect
+        function cleanupStream() {
+          isConnected = false;
+          clearInterval(heartbeatInterval);
+          if (pollInterval) clearInterval(pollInterval);
+          if (changeStream) changeStream.close().catch(() => {});
+          
+          const count = activeStreams.get(decodedToken.uid);
+          if (count <= 1) {
+            activeStreams.delete(decodedToken.uid);
+          } else {
+            activeStreams.set(decodedToken.uid, count - 1);
+          }
+        }
+
         request.signal.addEventListener("abort", () => {
-           isConnected = false;
-           clearInterval(heartbeatInterval);
-           if (pollInterval) clearInterval(pollInterval);
-           if (changeStream) changeStream.close().catch(() => {});
-           try { controller.close(); } catch (e) {}
+          cleanupStream();
+          try { controller.close(); } catch (e) {}
         });
       }
     });
