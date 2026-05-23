@@ -14,6 +14,16 @@ const EAR_THRESHOLD = 0.25;
 const BLINK_COOLDOWN_MS = 300;
 const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
 
+/**
+ * FaceRecognizer Component
+ * 
+ * Performs real-time camera stream capturing, TinyFaceDetector identification, 
+ * and liveness detection (blink checks) to record user attendance securely.
+ * 
+ * @param {Object} props - Component properties.
+ * @param {Object} props.authUser - The currently authenticated Firebase user.
+ * @returns {React.ReactElement} The webcam face recognition and liveness tracking interface.
+ */
 export default function FaceRecognizer({ authUser }) {
   const isMounted = useRef(true);
   const retryStreamRef = useRef(null);
@@ -364,9 +374,17 @@ export default function FaceRecognizer({ authUser }) {
     }
   };
 
+  /**
+   * Safe analytics page view logging. Wrapped in a try-catch block
+   * to prevent runtime crashes caused by client-side ad-blockers blocking Firebase Analytics.
+   */
   useEffect(() => {
     if (analytics) {
-      logEvent(analytics, "page_view", { page: "attendance" });
+      try {
+        logEvent(analytics, "page_view", { page: "attendance" });
+      } catch (err) {
+        console.warn("Analytics page_view logEvent was blocked or failed:", err);
+      }
     }
   }, []);
 

@@ -1,6 +1,7 @@
 import {
   collection,
-  addDoc,
+  setDoc,
+  doc,
   getDocs,
   query,
   serverTimestamp,
@@ -56,10 +57,10 @@ return !snapshot.empty;
  * @throws {Error} If userId or db is unavailable.
  * @example
  * const result = await recordAttendance({
- *   userId: 'user_abc123',
- *   studentName: 'Alice Smith',
- *   email: 'alice@example.com',
- *   confidenceScore: 0.97,
+ * userId: 'user_abc123',
+ * studentName: 'Alice Smith',
+ * email: 'alice@example.com',
+ * confidenceScore: 0.97,
  * });
  * // { alreadyRecorded: false }
  */
@@ -77,6 +78,8 @@ export async function recordAttendance({
     return { alreadyRecorded: true };
   }
 
+  const todayKey = getTodayKey();
+
   // INTERCEPT OFFLINE SUBMISSIONS
   if (typeof window !== "undefined" && !navigator.onLine) {
     console.warn("Device is offline. Queuing attendance locally.");
@@ -85,7 +88,7 @@ export async function recordAttendance({
       studentName,
       email,
       confidenceScore: confidenceScore ?? 0,
-      date: getTodayKey(),
+      date: todayKey,
     });
     
     // Attempt to register Background Sync for later flush
@@ -94,12 +97,12 @@ export async function recordAttendance({
     return { alreadyRecorded: false, newRate: null, queuedOffline: true };
   }
 
-  await addDoc(collection(db, "attendance_records"), {
+  await setDoc(doc(db, "attendance_records", `${userId}_${todayKey}`), {
     userId,
     studentName,
     email,
     timestamp: serverTimestamp(),
-    date: getTodayKey(),
+    date: todayKey,
     status: "present",
     confidenceScore: confidenceScore ?? 0,
   });

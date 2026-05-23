@@ -83,45 +83,65 @@ const TeacherDashboard = () => {
     lateToday: 0,
     averageAttendance: 0,
   });
+const fetchTodayAttendanceStats = async () => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
 
-  // 1. Move the function OUTSIDE the useEffect so it can be reused by the button
-  const fetchTodayAttendanceStats = async () => {
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const attendanceQuery = query(
-        collection(db, "attendance_records"),
-        where("date", "==", today),
-      );
-      const snapshot = await getDocs(attendanceQuery);
-      const records = snapshot.docs.map((doc) => doc.data());
+    const attendanceQuery = query(
+      collection(db, "attendance_records"),
+      where("date", "==", today),
+    );
 
-      const presentToday = records.filter(
-        (r) => r.status === "present" || !r.status,
-      ).length;
-      const lateToday = records.filter((r) => r.status === "late").length;
-      const absentToday = records.filter((r) => r.status === "absent").length;
-      const totalStudents = records.length;
-      const averageAttendance =
-        totalStudents > 0
-          ? Math.round(((presentToday + lateToday) / totalStudents) * 1000) / 10
-          : 0;
+    const snapshot = await getDocs(attendanceQuery);
 
-      setAttendanceStats({
-        totalStudents,
-        presentToday,
-        absentToday,
-        lateToday,
-        averageAttendance,
-      });
-    } catch (err) {
-      console.error("Failed to fetch today's attendance stats:", err);
-    }
-  };
+    const records = snapshot.docs.map((doc) =>
+      doc.data(),
+    );
 
-  // 2. Keep the useEffect to fetch the data when the page first loads
-  useEffect(() => {
-    fetchTodayAttendanceStats();
-  }, []);
+    const presentToday = records.filter(
+      (r) =>
+        r.status === "present" ||
+        !r.status,
+    ).length;
+
+    const lateToday = records.filter(
+      (r) => r.status === "late",
+    ).length;
+
+    const absentToday = records.filter(
+      (r) => r.status === "absent",
+    ).length;
+
+    const totalStudents = records.length;
+
+    const averageAttendance =
+      totalStudents > 0
+        ? Math.round(
+            ((presentToday + lateToday) /
+              totalStudents) *
+              1000,
+          ) / 10
+        : 0;
+
+    setAttendanceStats({
+      totalStudents,
+      presentToday,
+      absentToday,
+      lateToday,
+      averageAttendance,
+    });
+  } catch (err) {
+    console.error(
+      "Failed to fetch today's attendance stats:",
+      err,
+    );
+  }
+};
+
+useEffect(() => {
+  fetchTodayAttendanceStats();
+}, []);
+    
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
@@ -429,7 +449,7 @@ const TeacherDashboard = () => {
       setLoading(false);
     }, 1500);
 
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
 
@@ -458,7 +478,7 @@ const TeacherDashboard = () => {
     }, 1000);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(timer);
       clearTimeout(loadingTimer);
     };
   }, []);

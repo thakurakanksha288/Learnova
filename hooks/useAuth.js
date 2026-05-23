@@ -24,13 +24,13 @@ const deleteCookie = (name) => {
  * Provides authentication state and user profile information.
  * Tracks Firebase authentication changes and exposes auth-related utilities.
  * @returns {{
- *   user: Object|null,
- *   userProfile: Object|null,
- *   loading: boolean,
- *   error: string|null,
- *   signOut: Function,
- *   isAuthenticated: boolean,
- *   hasProfile: boolean
+ * user: Object|null,
+ * userProfile: Object|null,
+ * loading: boolean,
+ * error: string|null,
+ * signOut: Function,
+ * isAuthenticated: boolean,
+ * hasProfile: boolean
  * }} Authentication state and helper methods.
  */
 export const useAuth = () => {
@@ -114,7 +114,7 @@ export const useAuth = () => {
       setUser(null);
       setUserProfile(null);
 
-      // Clear auth cookies
+      // Critical Security Fix: Clear authentication cookies to prevent zombie sessions in Next.js middleware
       deleteCookie("authToken");
       deleteCookie("userRole");
 
