@@ -282,10 +282,11 @@ export default function Contact() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="block text-foreground font-medium">
+                        <label htmlFor="contact-name" className="block text-foreground font-medium">
                           Full Name *
                         </label>
                         <input
+                          id="contact-name"
                           type="text"
                           name="name"
                           value={formData.name}
@@ -301,10 +302,11 @@ export default function Contact() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-foreground font-medium">
+                        <label htmlFor="contact-email" className="block text-foreground font-medium">
                           Email Address *
                         </label>
                         <input
+                          id="contact-email"
                           type="email"
                           name="email"
                           value={formData.email}
@@ -321,10 +323,11 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-foreground font-medium">
+                      <label htmlFor="contact-company" className="block text-foreground font-medium">
                         Institution/Company
                       </label>
                       <input
+                        id="contact-company"
                         type="text"
                         name="company"
                         value={formData.company}
@@ -335,10 +338,11 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-foreground font-medium">
+                      <label htmlFor="contact-message" className="block text-foreground font-medium">
                         Message *
                       </label>
                       <textarea
+                        id="contact-message"
                         name="message"
                         value={formData.message}
                         onChange={handleInputChange}
