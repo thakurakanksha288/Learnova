@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 const exceptionUpdateSchema = z.object({
   exceptionId: z
     .string({
-      error: "exceptionId is required",
+      required_error: "exceptionId is required",
+      invalid_type_error: "exceptionId is required",
     })
     .trim()
     .min(1, "exceptionId is required")
@@ -22,7 +23,9 @@ const exceptionUpdateSchema = z.object({
     }),
   status: z
     .enum(["approved", "rejected"], {
-      error: "Invalid status value",
+      required_error: "Invalid status value",
+      invalid_type_error: "Invalid status value",
+      message: "Invalid status value",
     }),
   comments: z.string().optional(),
 });
@@ -34,7 +37,16 @@ export const PUT = withErrorHandler(async (request) => {
   
   const validation = exceptionUpdateSchema.safeParse(body);
   if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    let firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    const path = validation.error.issues?.[0]?.path?.[0];
+    const code = validation.error.issues?.[0]?.code;
+
+    if (path === "exceptionId" && (code === "invalid_type" || firstError.includes("Required"))) {
+      firstError = "exceptionId is required";
+    } else if (path === "status" && (code === "invalid_type" || code === "invalid_enum_value" || firstError.includes("Required"))) {
+      firstError = "Invalid status value";
+    }
+
     throw new ValidationError(firstError);
   }
   
