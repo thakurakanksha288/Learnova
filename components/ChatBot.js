@@ -424,6 +424,16 @@ async function saveConversation(userText, botText) {
 const LearnovaChatbot = () => {
   // Get the Firebase user object so we can fetch a fresh ID token per request
   const { user } = useAuthContext();
+   
+  
+  const getContextWelcomeMessage = useCallback(() => {
+    if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
+    const nameSegment = user.displayName || user.email?.split('@')[0] || "there";
+    const role = user.role?.toLowerCase() || "";
+    if (role === "teacher" || role === "instructor") return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
+    if (role === "student") return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
+    return `Hello ${nameSegment}! Welcome to Learnova. How can I help you today?`;
+  }, [user]);
 
   const INITIAL_MESSAGE = {
     id: 1,
@@ -437,14 +447,29 @@ const LearnovaChatbot = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true); // This is the only one we need!
+  const [messages, setMessages] = useState(() => [INITIAL_MESSAGE]);
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
 
+
+  const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const userHasScrolledUp = useRef(false);
+
+  useEffect(() => {
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(),
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
+  }, [getContextWelcomeMessage]);
 
   useEffect(() => {
     if (!inputMessage && textareaRef.current) {
@@ -486,7 +511,14 @@ const LearnovaChatbot = () => {
   };
 
   const clearChat = () => {
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(),
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
     setCurrentCategory("general");
     userHasScrolledUp.current = false;
   };
@@ -550,6 +582,13 @@ const LearnovaChatbot = () => {
   // ---------------------------------------------------------------------------
   // Theme tokens - Enhanced for rich glassmorphism & premium UI spacing
   // ---------------------------------------------------------------------------
+  
+  const themeTokens = {
+    bg: isDarkMode 
+      ? "bg-gray-950/90 backdrop-blur-xl text-white" 
+      : "bg-white/95 backdrop-blur-xl text-gray-900",
+    header: "bg-gradient-to-r from-purple-700 via-blue-700 to-indigo-700",
+    border: isDarkMode ? "border-gray-700" : "border-gray-200",
   const t = {
     bg: isDarkMode 
       ? "bg-gray-950/90 backdrop-blur-xl text-white" 
@@ -604,12 +643,14 @@ const LearnovaChatbot = () => {
   // ---------------------------------------------------------------------------
   return (
     <div
+      className={`fixed bottom-6 right-6 z-50 flex flex-col ${themeTokens.bg} rounded-xl shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
+        isMinimized ? "w-72 h-16 overflow-hidden" : "w-96 h-[660px]"
       className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
         isMinimized ? "bottom-6 right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className={`${t.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
+      <div className={`${themeTokens.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
         <div className="flex items-center space-x-3">
           <div className="relative">
             <Bot className="text-yellow-300" size={22} />
@@ -643,14 +684,14 @@ const LearnovaChatbot = () => {
       {!isMinimized && (
         <>
           {/* ── Category Tabs ────────────────────────────────────────────── */}
-          <div className={`p-2 border-b ${t.border} shrink-0`}>
+          <div className={`p-2 border-b ${themeTokens.border} shrink-0`}>
             <div className="flex space-x-1 overflow-x-auto scrollbar-none">
               {categories.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setCurrentCategory(id)}
                   className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
-                    currentCategory === id ? t.catBtnActive : t.catBtn
+                    currentCategory === id ? themeTokens.catBtnActive : themeTokens.catBtn
                   }`}
                 >
                   <Icon size={12} />
@@ -675,12 +716,12 @@ const LearnovaChatbot = () => {
               >
                 <div className={`flex max-w-[85%] items-end gap-2 ${message.isBot ? "flex-row" : "flex-row-reverse"}`}>
                   {/* Avatar */}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${message.isBot ? t.botAvatar : t.userAvatar}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${message.isBot ? themeTokens.botAvatar : themeTokens.userAvatar}`}>
                     {message.isBot ? <Bot size={16} /> : <User size={16} />}
                   </div>
 
                   {/* Bubble */}
-                  <div className={`px-4 py-3 rounded-2xl shadow-sm ${message.isBot ? t.botMsg : t.userMsg}`}>
+                  <div className={`px-4 py-3 rounded-2xl shadow-sm ${message.isBot ? themeTokens.botMsg : themeTokens.userMsg}`}>
                     {message.isBot ? (
                       <ReactMarkdown components={markdownComponents}>
                         {message.text}
@@ -712,7 +753,7 @@ const LearnovaChatbot = () => {
                   <button
                     key={i}
                     onClick={() => handleSendMessage(q)}
-                    className={`w-full text-left text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] ${t.suggestion}`}
+                    className={`w-full text-left text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] ${themeTokens.suggestion}`}
                   >
                     {q}
                   </button>
@@ -722,17 +763,15 @@ const LearnovaChatbot = () => {
 
             {/* Loading indicator */}
             {isLoading && (
-              <div className="flex justify-start">
-                <div className={`${t.loading} rounded-2xl px-4 py-3 shadow-sm`}>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      {[0, 0.1, 0.2].map((delay, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
-                          style={{ animationDelay: `${delay}s` }}
-                        />
-                      ))}
+              <div className="flex justify-start items-end gap-2 animate-fadeIn">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${themeTokens.botAvatar}`}>
+                  <Bot size={16} />
+                </div>
+                <div className={`${themeTokens.loading} border rounded-2xl px-4 py-3 shadow-sm`}>
+                   <div className="flex items-center space-x-1 px-1 py-1">     
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
                     </div>
                     <span
                       className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"
@@ -742,13 +781,12 @@ const LearnovaChatbot = () => {
                     </span>
                   </div>
                 </div>
-              </div>
             )}
 
           </div>
 
           {/* ── Quick Contact Bar ─────────────────────────────────────────── */}
-          <div className={`px-4 py-2 border-t ${t.border} shrink-0`}>
+          <div className={`px-4 py-2 border-t ${themeTokens.border} shrink-0`}>
             <div className="flex items-center justify-center space-x-4 text-xs">
               <a
                 href={`mailto:${CONTACT_INFO.email}`}
@@ -777,7 +815,7 @@ const LearnovaChatbot = () => {
           </div>
 
           {/* ── Input ─────────────────────────────────────────────────────── */}
-          <div className={`p-4 border-t ${t.border} shrink-0`}>
+          <div className={`p-4 border-t ${themeTokens.border} shrink-0`}>
             <div className="flex items-end gap-3">
               <textarea
                 ref={textareaRef}
@@ -787,7 +825,7 @@ const LearnovaChatbot = () => {
                 disabled={isLoading}
                 placeholder="Ask Nova about Learnova…"
                 rows={1}
-                className={`flex-1 px-4 py-3 border rounded-xl resize-none focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm ${t.input}`}
+              className={`flex-1 px-4 py-3 border rounded-xl resize-none focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm ${themeTokens.input}`}  
                 style={{ minHeight: "48px", maxHeight: "120px" }}
               />
               <button

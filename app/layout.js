@@ -32,13 +32,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  metadataBase: new URL("https://learnova-web.vercel.app"),
   title: {
     default: "Learnova - Smart Student Engagement & Attendance Platform",
     template: "%s | Learnova",
   },
-  description:
-    "AI-powered student engagement platform with smart attendance tracking, classroom management, and analytics. Trusted by 10,000+ schools worldwide for modern education technology.",
+  description: "AI-powered student engagement platform with smart attendance tracking, classroom management, and analytics. Trusted by 10,000+ schools worldwide for modern education technology.",
   keywords: [
     "student engagement",
     "attendance platform",
@@ -81,8 +79,7 @@ export const metadata = {
   },
   openGraph: {
     title: "Learnova - Smart Student Engagement & Attendance Platform",
-    description:
-      "AI-powered education platform with smart attendance, student engagement tools, and comprehensive analytics. Join 10,000+ schools using Learnova.",
+    description: "AI-powered education platform with smart attendance, student engagement tools, and comprehensive analytics. Join 10,000+ schools using Learnova.",
     url: "https://learnova-web.vercel.app",
     siteName: "Learnova",
     images: [
@@ -100,8 +97,7 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Learnova - Smart Student Engagement Platform",
-    description:
-      "Transform education with AI-powered tools. Smart attendance, engagement tracking, and analytics for modern classrooms.",
+    description: "Transform education with AI-powered tools. Smart attendance, engagement tracking, and analytics for modern classrooms.",
     site: "@learnova",
     creator: "@learnova",
     images: ["/og-image.jpg"],
