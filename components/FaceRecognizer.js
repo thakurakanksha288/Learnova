@@ -52,7 +52,7 @@ export default function FaceRecognizer({ authUser }) {
     error,
   } = useLabels(authUser);
 
-  const [message, setMessage] = useState("Loading models...");
+  const [message, setMessage] = useState("Loading AI models...");
   const [finished, setFinished] = useState(false);
   const [detectedPerson, setDetectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +104,8 @@ export default function FaceRecognizer({ authUser }) {
         cancelAnimationFrame(animationFrameId.current);
       }
 
+      setMessage("Requesting camera permission...");
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode },
       });
@@ -146,7 +148,7 @@ export default function FaceRecognizer({ authUser }) {
       setIsLoading(false);
       if (err.name === "NotAllowedError") {
         setMessage(
-          "Camera access is blocked! Enable camera permissions in browser settings.",
+          "Camera access denied. Please enable camera permissions in browser settings.",
         );
       } else {
         setMessage("Cannot access camera ❌");
@@ -166,7 +168,7 @@ export default function FaceRecognizer({ authUser }) {
     const loadModels = async () => {
       try {
         if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
-        setMessage("Downloading ML models...");
+        setMessage("Loading AI models...");
         const faceapi = await import("face-api.js");
         faceapiRef.current = faceapi;
 
@@ -190,6 +192,7 @@ export default function FaceRecognizer({ authUser }) {
     const startVideo = async () => {
       try {
         if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+        setMessage("Requesting camera permission...");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode },
         });
@@ -224,9 +227,13 @@ export default function FaceRecognizer({ authUser }) {
         }
       } catch (err) {
         if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
-        setMessage("Cannot access webcam ❌");
-        setFinished(true);
         setIsLoading(false);
+        if (err.name === "NotAllowedError" || err.message?.includes("Permission denied")) {
+          setMessage("Camera access denied. Please enable camera permissions in browser settings.");
+        } else {
+          setMessage("Cannot access webcam ❌");
+        }
+        setFinished(true);
       }
     };
 
