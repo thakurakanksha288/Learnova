@@ -4,6 +4,8 @@ import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { getLocalDateKey } from "@/lib/dateUtils";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
 import { z } from "zod";
 
@@ -66,6 +68,11 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
 
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_sync_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const body = await parseJSON(request, 1024 * 100);
   const { records } = syncSchema.parse(body);
 

@@ -1,6 +1,8 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 
@@ -11,6 +13,12 @@ export const POST = withValidation(
   setRoleSchema,
   withErrorHandler(async (request, data) => {
     const decodedToken = await authenticateRequest(request);
+
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const rateLimitResult = await checkRateLimit(`set_role_${ip}_${decodedToken.uid}`);
+    if (!rateLimitResult.allowed) {
+      throw new AppError("Too many attempts. Please try again later.", 429);
+    }
 
     const { role, fullName, instituteName, inviteCode } = data;
 

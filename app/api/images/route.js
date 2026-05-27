@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { del, put } from "@vercel/blob";
 import {
   extractImageFileFromFormData,
@@ -30,7 +31,12 @@ export const GET = withErrorHandler(async (request) => {
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`images_post_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    const { AppError } = require("@/lib/errors");
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const formData = await request.formData();
   const file = extractImageFileFromFormData(formData);
 
