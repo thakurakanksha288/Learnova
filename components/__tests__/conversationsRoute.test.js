@@ -209,6 +209,39 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.userMessage).toBe("Hello World"); // <script> tag stripped
+    expect(mockInsertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userMessage: "Hello World",
+      })
+    );
+  });
+
+  test("strips HTML tags while preserving safe Markdown syntax", async () => {
+    const mockDecodedToken = { uid: "user-123", email: "user@example.com" };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+    mockInsertOne.mockResolvedValue({ insertedId: "conv-123" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        userMessage: "**Hello** <b>World</b> [docs](/courses)",
+        botMessage: "<style>body{display:none}</style>Safe **reply**",
+      }
+    );
+
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.userMessage).toBe("**Hello** World [docs](/courses)");
+    expect(body.data.botMessage).toBe("Safe **reply**");
+    expect(mockInsertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userMessage: "**Hello** World [docs](/courses)",
+        botMessage: "Safe **reply**",
+      })
+    );
   });
 });
 
@@ -340,4 +373,3 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     expect(body.error).toBe("Internal server error");
   });
 });
-
