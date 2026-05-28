@@ -135,17 +135,17 @@ export async function middleware(request) {
     authToken = request.cookies.get("authToken")?.value;
   }
   
-  const userRole = request.cookies.get("userRole")?.value;
-
   // Cryptographically verify the token — decoding alone is not sufficient
   let isTokenValid = false;
   let isEmailVerified = false;
+  let userRole = null;
 
   if (authToken) {
     const payload = await verifyIdToken(authToken);
     if (payload) {
       isTokenValid = true;
       isEmailVerified = !!payload.email_verified;
+      userRole = payload.role || null;
     }
   }
 
