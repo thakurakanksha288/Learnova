@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
+import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar,
@@ -1251,6 +1252,7 @@ const TeacherDashboard = () => {
         <div className="flex space-x-1 bg-card/40 dark:bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl p-1 border border-border dark:border-white/10">
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+            { id: "curriculum", label: "Curriculum", icon: BookOpen },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
             { id: "schedule", label: "Schedule", icon: Calendar },
           ].map((tab) => (
@@ -1290,6 +1292,7 @@ const TeacherDashboard = () => {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "curriculum" && <CurriculumBuilder />}
         {activeTab === "analytics" && renderAnalytics()}
         {activeTab === "schedule" && renderSchedule()}
       </div>

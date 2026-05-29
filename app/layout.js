@@ -115,20 +115,7 @@ export default function RootLayout({ children }) {
             <BackToTop />
             <RouteAnnouncer />
 
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 4000,
-                      style: { fontWeight: 600 },
-                    }}
-                  />
-                  <OfflineIndicator />
-                  <CommandPaletteWrapper />
-                </Suspense>
-              </NotificationProvider>
-            </FirestoreProvider>
-          </AuthProvider>
-        </ThemeProvider>
+            <CommandPaletteWrapper />
             <Toaster
               position="bottom-right"
               toastOptions={{
