@@ -5,37 +5,37 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
-jest.mock("@/lib/rbac", () => ({
-  requireRole: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireRole: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/mongodb", () => {
+vi.mock("@/lib/mongodb", () => {
   const mockCursor = {
-    sort: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    toArray: jest.fn().mockResolvedValue([]),
+    sort: vi.fn().mockReturnThis(),
+    skip: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    toArray: vi.fn().mockResolvedValue([]),
   };
   const mockCollection = {
-    countDocuments: jest.fn().mockResolvedValue(0),
-    find: jest.fn(() => mockCursor),
+    countDocuments: vi.fn().mockResolvedValue(0),
+    find: vi.fn(() => mockCursor),
   };
   const mockDb = {
-    collection: jest.fn(() => mockCollection),
+    collection: vi.fn(() => mockCollection),
   };
   return {
-    connectDb: jest.fn(() => Promise.resolve(mockDb)),
+    connectDb: vi.fn(() => Promise.resolve(mockDb)),
     _mockCollection: mockCollection,
     _mockCursor: mockCursor,
     _mockDb: mockDb,
   };
 });
 
-jest.mock("@/lib/error-handler", () => {
+vi.mock("@/lib/error-handler", () => {
   const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
@@ -60,7 +60,7 @@ jest.mock("@/lib/error-handler", () => {
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -74,7 +74,7 @@ describe("exceptions list route", () => {
   let mockCursor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
     mockCollection = require("@/lib/mongodb")._mockCollection;
     mockCursor = require("@/lib/mongodb")._mockCursor;

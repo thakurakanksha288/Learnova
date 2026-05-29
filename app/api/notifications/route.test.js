@@ -5,10 +5,10 @@ import clientPromise from "../../../lib/mongodb";
 import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../testUtils/assertApiError";
 
-jest.mock("../../../lib/error-handler", () => {
+vi.mock("../../../lib/error-handler", () => {
   const { AppError } = require("../../../lib/errors");
   return {
-    authenticateRequest: jest.fn(),
+    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
@@ -28,29 +28,29 @@ jest.mock("../../../lib/error-handler", () => {
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("../../../lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("../../../lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("../../../lib/mongodb", () => {
+vi.mock("../../../lib/mongodb", () => {
   const mockCursor = {
-    sort: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    toArray: jest.fn().mockResolvedValue([]),
+    sort: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    toArray: vi.fn().mockResolvedValue([]),
   };
   const mockCollection = {
-    find: jest.fn(() => mockCursor),
-    updateMany: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+    find: vi.fn(() => mockCursor),
+    updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
   };
   const mockDb = {
-    collection: jest.fn(() => mockCollection),
+    collection: vi.fn(() => mockCollection),
   };
   const mockClient = {
-    db: jest.fn(() => mockDb),
+    db: vi.fn(() => mockDb),
   };
   return {
     __esModule: true,
@@ -60,7 +60,7 @@ jest.mock("../../../lib/mongodb", () => {
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -74,7 +74,7 @@ describe("notifications route", () => {
   let mockCursor;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
     mockCollection = require("../../../lib/mongodb")._mockCollection;
     mockCursor = require("../../../lib/mongodb")._mockCursor;

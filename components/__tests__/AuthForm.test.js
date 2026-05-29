@@ -6,21 +6,21 @@ const defaultProps = {
   isLogin: true,
   selectedRole: "student",
   email: "",
-  setEmail: jest.fn(),
+  setEmail: vi.fn(),
   password: "",
-  setPassword: jest.fn(),
+  setPassword: vi.fn(),
   fullName: "",
-  setFullName: jest.fn(),
+  setFullName: vi.fn(),
   instituteName: "",
-  setInstituteName: jest.fn(),
+  setInstituteName: vi.fn(),
   errors: {},
-  setErrors: jest.fn(),
+  setErrors: vi.fn(),
   isLoading: false,
-  onSubmit: jest.fn((e) => e.preventDefault()),
-  onGoogleLogin: jest.fn(),
-  onRoleChange: jest.fn(),
-  onToggleLogin: jest.fn(),
-  onForgotPassword: jest.fn(),
+  onSubmit: vi.fn((e) => e.preventDefault()),
+  onGoogleLogin: vi.fn(),
+  onRoleChange: vi.fn(),
+  onToggleLogin: vi.fn(),
+  onForgotPassword: vi.fn(),
 };
 
 describe("AuthForm", () => {
@@ -56,7 +56,7 @@ describe("AuthForm", () => {
 
   test("calls onSubmit when form is submitted", async () => {
     const user = userEvent.setup();
-    const handleSubmit = jest.fn((e) => e.preventDefault());
+    const handleSubmit = vi.fn((e) => e.preventDefault());
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 

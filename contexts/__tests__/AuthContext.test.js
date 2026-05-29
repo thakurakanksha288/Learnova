@@ -4,8 +4,8 @@ import { AuthProvider, useAuthContext } from "../AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 
 // Mock the useAuth hook
-jest.mock("@/hooks/useAuth", () => ({
-  useAuth: jest.fn(),
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: vi.fn(),
 }));
 
 // Test component that consumes the AuthContext
@@ -16,12 +16,12 @@ function TestComponent() {
 
 describe("AuthContext and AuthProvider", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("throws an error when useAuthContext is used outside AuthProvider", () => {
     // Suppress console.error in test output as throwing is expected here
-    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => render(<TestComponent />)).toThrow(
       "useAuthContext must be used within an AuthProvider"
@@ -36,7 +36,7 @@ describe("AuthContext and AuthProvider", () => {
       userProfile: null,
       loading: false,
       error: null,
-      signOut: jest.fn(),
+      signOut: vi.fn(),
       isAuthenticated: true,
       hasProfile: false,
     };

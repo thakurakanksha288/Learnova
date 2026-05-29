@@ -2,24 +2,24 @@ import { GET } from "./route";
 import { authenticateRequest } from "@/lib/error-handler";
 import { getFirestore } from "firebase-admin/firestore";
 
-jest.mock("@/lib/error-handler", () => ({
-  authenticateRequest: jest.fn(),
+vi.mock("@/lib/error-handler", () => ({
+  authenticateRequest: vi.fn(),
   withErrorHandler: (handler) => handler,
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  initFirebaseAdmin: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  initFirebaseAdmin: vi.fn(),
 }));
 
-jest.mock("firebase-admin/firestore", () => ({
-  getFirestore: jest.fn(),
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(),
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -30,7 +30,7 @@ jest.mock("next/server", () => ({
 
 describe("attendance heatmap route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("returns empty array if userId or month parameter is missing", async () => {
@@ -95,9 +95,9 @@ describe("attendance heatmap route", () => {
       },
     ];
 
-    const mockGet = jest.fn().mockResolvedValue(mockDocs);
-    const mockWhere = jest.fn().mockReturnThis();
-    const mockCollection = jest.fn(() => ({
+    const mockGet = vi.fn().mockResolvedValue(mockDocs);
+    const mockWhere = vi.fn().mockReturnThis();
+    const mockCollection = vi.fn(() => ({
       where: mockWhere,
       get: mockGet,
     }));

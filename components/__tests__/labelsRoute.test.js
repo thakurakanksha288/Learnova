@@ -3,9 +3,9 @@ import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -15,17 +15,17 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
 describe("GET /api/labels - Security & Authentication Tests", () => {
@@ -34,7 +34,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
   let mockFind;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 10 });
 
@@ -45,16 +45,16 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
     getUserProfile.mockResolvedValue({ role: "teacher" });
 
-    mockToArray = jest.fn();
-    mockLimit = jest.fn().mockReturnValue({
+    mockToArray = vi.fn();
+    mockLimit = vi.fn().mockReturnValue({
       toArray: mockToArray,
     });
-    mockFind = jest.fn().mockReturnValue({
+    mockFind = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         find: mockFind,
       }),
     });
@@ -65,7 +65,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     return {
       url,
       headers: {
-        get: jest.fn().mockImplementation((name) => {
+        get: vi.fn().mockImplementation((name) => {
           if (name.toLowerCase() === "authorization") {
             return authHeader;
           }

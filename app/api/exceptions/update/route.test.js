@@ -8,34 +8,34 @@ import { ObjectId } from "mongodb";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
-jest.mock("@/lib/rbac", () => ({
-  requireRole: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireRole: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  getUserProfileByEmail: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  getUserProfileByEmail: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => {
+vi.mock("@/lib/mongodb", () => {
   const mockCollection = {
-    findOne: jest.fn(),
-    updateOne: jest.fn(),
+    findOne: vi.fn(),
+    updateOne: vi.fn(),
   };
   const mockDb = {
-    collection: jest.fn(() => mockCollection),
+    collection: vi.fn(() => mockCollection),
   };
   return {
-    connectDb: jest.fn(() => Promise.resolve(mockDb)),
+    connectDb: vi.fn(() => Promise.resolve(mockDb)),
     _mockCollection: mockCollection,
     _mockDb: mockDb,
   };
 });
 
-jest.mock("@/lib/error-handler", () => {
+vi.mock("@/lib/error-handler", () => {
   const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
@@ -57,11 +57,11 @@ jest.mock("@/lib/error-handler", () => {
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -78,12 +78,12 @@ describe("exceptions update route", () => {
   const validObjectId = "507f1f77bcf86cd799439011";
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
     mockCollection = require("@/lib/mongodb")._mockCollection;
 
     originalConsoleLog = console.log;
-    consoleLogMock = jest.fn();
+    consoleLogMock = vi.fn();
     console.log = consoleLogMock;
   });
 

@@ -5,10 +5,10 @@ import { connectDb } from "../../../../lib/mongodb";
 import { assertApiSuccess } from "../../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../../testUtils/assertApiError";
 
-jest.mock("../../../../lib/error-handler", () => {
+vi.mock("../../../../lib/error-handler", () => {
   const { AppError } = require("../../../../lib/errors");
   return {
-    authenticateRequest: jest.fn(),
+    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
@@ -28,29 +28,29 @@ jest.mock("../../../../lib/error-handler", () => {
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("../../../../lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("../../../../lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("../../../../lib/mongodb", () => {
+vi.mock("../../../../lib/mongodb", () => {
   const mockCollection = {
-    insertMany: jest.fn().mockResolvedValue({ acknowledged: true }),
+    insertMany: vi.fn().mockResolvedValue({ acknowledged: true }),
   };
   const mockDb = {
-    collection: jest.fn(() => mockCollection),
+    collection: vi.fn(() => mockCollection),
   };
   return {
-    connectDb: jest.fn(() => Promise.resolve(mockDb)),
+    connectDb: vi.fn(() => Promise.resolve(mockDb)),
     _mockCollection: mockCollection,
     _mockDb: mockDb,
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -63,7 +63,7 @@ describe("notifications seed route", () => {
   let mockCollection;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
     mockCollection = require("../../../../lib/mongodb")._mockCollection;
   });

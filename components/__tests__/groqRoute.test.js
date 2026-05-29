@@ -2,9 +2,9 @@ import { POST } from "@/app/api/groq/route";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,22 +14,22 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout Tests", () => {
   const originalEnv = { ...process.env };
 
   beforeAll(() => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -38,7 +38,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env = { ...originalEnv };
     process.env.GROQ_API_KEY = "mock-groq-key";
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
@@ -50,8 +50,8 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      json: jest.fn().mockResolvedValue(bodyData),
-      text: jest.fn().mockResolvedValue(JSON.stringify(bodyData)),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 
@@ -133,7 +133,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
 
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: "AI response" } }],
       }),
     });
@@ -165,7 +165,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
 
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: "Nova's warm response!" } }],
       }),
     });
@@ -211,7 +211,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     global.fetch.mockResolvedValue({
       ok: false,
       status: 429,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         error: { message: "Upstream quota exceeded" },
       }),
     });
@@ -233,7 +233,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     global.fetch.mockResolvedValue({
       ok: false,
       status: 500,
-      json: jest.fn().mockRejectedValue(new Error("Invalid JSON")),
+      json: vi.fn().mockRejectedValue(new Error("Invalid JSON")),
     });
 
     const req = createMockRequest(
@@ -252,7 +252,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
 
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: "Response with history" } }],
       }),
     });
@@ -301,7 +301,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
       fetchBody = JSON.parse(options.body);
       return Promise.resolve({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           choices: [{ message: { content: "Response with memory" } }],
         }),
       });
