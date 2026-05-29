@@ -7,31 +7,31 @@ import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("@/lib/rbac", () => ({
-  requireAuth: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  initFirebaseAdmin: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  initFirebaseAdmin: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
 }));
 
-jest.mock("firebase-admin/firestore", () => ({
-  getFirestore: jest.fn(),
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(),
   FieldValue: {
-    serverTimestamp: jest.fn(() => "server-timestamp"),
+    serverTimestamp: vi.fn(() => "server-timestamp"),
   },
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -40,7 +40,7 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/error-handler", () => {
+vi.mock("@/lib/error-handler", () => {
   const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
@@ -62,13 +62,13 @@ jest.mock("@/lib/error-handler", () => {
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
 describe("attendance sync route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
 
@@ -117,21 +117,21 @@ describe("attendance sync route", () => {
     const docRef = {};
 
     const collectionRef = {
-      doc: jest.fn(() => docRef),
+      doc: vi.fn(() => docRef),
     };
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
-        transactionSet = jest.fn();
-        transactionGet = jest.fn().mockResolvedValue({ exists: false });
+      runTransaction: vi.fn(async (callback) => {
+        transactionSet = vi.fn();
+        transactionGet = vi.fn().mockResolvedValue({ exists: false });
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST({
       headers: {
-        get: jest.fn().mockReturnValue(null),
+        get: vi.fn().mockReturnValue(null),
       },
     });
 
@@ -181,19 +181,19 @@ describe("attendance sync route", () => {
     getUserProfile.mockResolvedValue(null);
 
     const collectionRef = {
-      doc: jest.fn(() => ({ get: jest.fn() })),
+      doc: vi.fn(() => ({ get: vi.fn() })),
     };
 
-    const runTransaction = jest.fn();
+    const runTransaction = vi.fn();
 
     getFirestore.mockReturnValue({
       runTransaction,
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST({
       headers: {
-        get: jest.fn().mockReturnValue(null),
+        get: vi.fn().mockReturnValue(null),
       },
     });
 
@@ -231,13 +231,13 @@ describe("attendance sync route", () => {
     });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(),
-      collection: jest.fn(),
+      runTransaction: vi.fn(),
+      collection: vi.fn(),
     });
 
     const response = await POST({
       headers: {
-        get: jest.fn().mockReturnValue(null),
+        get: vi.fn().mockReturnValue(null),
       },
     });
 
@@ -277,21 +277,21 @@ describe("attendance sync route", () => {
 
     const docRef = {};
     const collectionRef = {
-      doc: jest.fn(() => docRef),
+      doc: vi.fn(() => docRef),
     };
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
-        transactionGet = jest.fn().mockResolvedValue({ exists: true });
-        transactionSet = jest.fn();
+      runTransaction: vi.fn(async (callback) => {
+        transactionGet = vi.fn().mockResolvedValue({ exists: true });
+        transactionSet = vi.fn();
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST({
       headers: {
-        get: jest.fn().mockReturnValue(null),
+        get: vi.fn().mockReturnValue(null),
       },
     });
 

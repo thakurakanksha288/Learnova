@@ -138,5 +138,6 @@ export const POST = withValidation(
     }
 
     return jsonSuccess({ userProfile }, 201);
-  })
+  }),
+  { maxBytes: 1024 * 10 }
 );

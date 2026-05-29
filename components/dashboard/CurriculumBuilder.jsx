@@ -647,7 +647,7 @@ export default function CurriculumBuilder() {
                               <select
                                 value={lesson.type}
                                 onChange={(e) => handleChangeLessonType(mod.id, lesson.id, e.target.value)}
-                                className="bg-zinc-900 border border-zinc-850 hover:border-zinc-800 rounded-md px-2 py-0.5 text-xs text-zinc-400 font-medium focus:outline-none cursor-pointer transition-all"
+                                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-md px-2 py-0.5 text-xs text-zinc-400 font-medium focus:outline-none cursor-pointer transition-all"
                               >
                                 <option value="video">🎥 Video</option>
                                 <option value="article">📄 Text Article</option>

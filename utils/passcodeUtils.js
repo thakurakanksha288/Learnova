@@ -1,5 +1,7 @@
 import crypto from "crypto";
 
+const PBKDF2_ITERATIONS = 210000;
+
 /**
  * Generates a secure, salted PBKDF2 hash of a passcode.
  * @param {string} passcode - The plain text passcode.
@@ -8,7 +10,7 @@ import crypto from "crypto";
 export function hashPasscode(passcode) {
   if (!passcode) return "";
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.pbkdf2Sync(passcode, salt, 1000, 64, "sha512").toString("hex");
+  const hash = crypto.pbkdf2Sync(passcode, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
   return `${salt}:${hash}`;
 }
 
@@ -23,6 +25,6 @@ export function verifyPasscode(passcode, storedHash) {
     return false;
   }
   const [salt, originalHash] = storedHash.split(":");
-  const hash = crypto.pbkdf2Sync(passcode, salt, 1000, 64, "sha512").toString("hex");
+  const hash = crypto.pbkdf2Sync(passcode, salt, PBKDF2_ITERATIONS, 64, "sha512").toString("hex");
   return hash === originalHash;
 }

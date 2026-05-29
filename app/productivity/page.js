@@ -28,9 +28,11 @@ import {
   Sun,
   Moon,
   Timer,
+  GraduationCap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { TimerSection } from "@/components/productivity/TimerSection";
+import ProductivityTrendsSection from "@/components/productivity/ProductivityTrendsSection";
 import { apiFetch } from "@/lib/apiClient";
 import { TaskSection } from "@/components/productivity/TaskSection";
 import { CalendarSection } from "@/components/productivity/CalendarSection";
@@ -110,7 +112,7 @@ function parseTimeToMinutes(timeLabel) {
   return hours * 60 + minutes;
 }
 
-const AcademicEligibilityCard = () => {
+const AcademicEligibilityCard = ({ isDark }) => {
   const defaultCgpa = 7.2;
   const requiredCgpa = 6.0;
   const defaultAttendance = 82;
@@ -122,14 +124,16 @@ const AcademicEligibilityCard = () => {
 
   const handleCheck = () => {
     setErrorMsg("");
+
     if (enteredCgpa === "") {
       setCgpa(defaultCgpa);
       return;
     }
 
     const value = parseFloat(enteredCgpa);
+
     if (Number.isNaN(value) || value < 0 || value > 10) {
-      setErrorMsg("Enter a valid CGPA between 0 and 10.");
+      setErrorMsg("Enter a valid CGPA between 0 and 10");
       return;
     }
 
@@ -138,108 +142,129 @@ const AcademicEligibilityCard = () => {
 
   const isEligible = cgpa >= requiredCgpa && attendance >= 75;
 
-  const maxCgpa = 10.0;
-  const cgpaPercent = Math.min(100, Math.max(0, Math.round((cgpa / maxCgpa) * 100)));
-  const attendancePercent = Math.min(100, Math.round(attendance));
+  const cgpaPercent = Math.round((cgpa / 10) * 100);
+  const attendancePercent = Math.round(attendance);
 
   return (
     <motion.div
-      className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl w-full"
+      className={`${isDark
+          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+        } rounded-3xl p-6`}
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
       whileHover={{ y: -4 }}
     >
-      <div className="flex items-start justify-between gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            🎓 Academic Eligibility
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-cyan-300" />
+              Academic Eligibility
           </h3>
-          <p className="text-xs text-slate-400 mt-1">Snapshot of placement eligibility</p>
+
+          <p className="text-xs text-slate-400 mt-1">
+            Snapshot of placement eligibility
+          </p>
         </div>
 
-        <div className="ml-auto">
-          <span
-            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${
-              isEligible
-                ? "bg-green-500/10 text-green-200 border-green-500/20"
-                : "bg-amber-500/10 text-amber-200 border-amber-500/20"
-            }`}
-          >
-            {isEligible ? "Placement Ready" : "Needs Improvement"}
-          </span>
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+            isEligible
+              ? "bg-green-500/10 text-green-300 border-green-500/20"
+              : "bg-amber-500/10 text-amber-300 border-amber-500/20"
+          }`}
+        >
+          {isEligible ? "Placement Ready" : "Needs Work"}
+        </span>
+      </div>
+
+      {/* CGPA Stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <p className="text-xs text-slate-400">Current CGPA</p>
+
+          <div className="text-lg font-semibold text-white">
+            {cgpa}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs text-slate-400">Required CGPA</p>
+
+          <div className="text-lg font-semibold text-white">
+            {requiredCgpa}
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-xs text-slate-400">Current CGPA</p>
-          <div className="text-xl font-semibold">{cgpa}</div>
-        </div>
-        <div>
-          <p className="text-xs text-slate-400">Required CGPA</p>
-          <div className="text-xl font-semibold">{requiredCgpa}</div>
+      {/* CGPA Progress */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-slate-400">
+            CGPA Progress
+          </p>
+
+          <span className="text-xs text-slate-400">
+            {cgpaPercent}%
+          </span>
         </div>
 
-        <div className="col-span-2 mt-2">
-          <p className="text-xs text-slate-400 mb-1">CGPA Progress</p>
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full bg-linear-to-r from-cyan-400 to-purple-400 transition-all"
-              style={{ width: `${cgpaPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="col-span-2 mt-3">
-          <p className="text-xs text-slate-400 mb-1">Attendance</p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full bg-linear-to-r from-emerald-400 to-cyan-400 transition-all"
-                style={{ width: `${attendancePercent}%` }}
-              />
-            </div>
-            <div className="text-sm font-medium">{attendance}%</div>
-          </div>
-        </div>
-
-        <div className="col-span-2 mt-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="10"
-              placeholder="Enter your CGPA (e.g. 7.2)"
-              value={enteredCgpa}
-              onChange={(e) => setEnteredCgpa(e.target.value)}
-              className="w-44 rounded-lg bg-transparent border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-            />
-            <button
-              onClick={handleCheck}
-              className="px-4 py-2 rounded-xl bg-cyan-500/80 text-slate-900 text-sm font-semibold"
-            >
-              Check eligibility
-            </button>
-            <div className="text-sm text-rose-300">{errorMsg}</div>
-          </div>
-        </div>
-
-        <div className="col-span-2 mt-4 text-center">
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
           <div
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
-              isEligible
-                ? "bg-green-500/10 text-green-200 border border-green-500/20"
-                : "bg-rose-500/10 text-rose-200 border border-rose-500/20"
-            }`}
-          >
-            {isEligible
-              ? "✅ Eligible for Campus Placements"
-              : "❌ Not Eligible — Improve CGPA or Attendance"}
-          </div>
+            className="h-full bg-gradient-to-r from-cyan-400 to-purple-400"
+            style={{ width: `${cgpaPercent}%` }}
+          />
         </div>
+      </div>
+
+      {/* Attendance */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-slate-400">
+            Attendance
+          </p>
+
+          <span className="text-xs font-medium">
+            {attendancePercent}%
+          </span>
+        </div>
+
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+            style={{ width: `${attendancePercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* CGPA Input */}
+      <div className="space-y-2 mb-4">
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="10"
+          placeholder="Enter your CGPA"
+          value={enteredCgpa}
+          onChange={(e) => setEnteredCgpa(e.target.value)}
+          className="w-full rounded-xl bg-transparent border border-white/10 px-3 py-1.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+        />
+
+        <button
+          onClick={handleCheck}
+          className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 transition-colors px-3 py-1.5 text-sm font-semibold text-slate-900"
+        >
+          Check Eligibility
+        </button>
+
+        {errorMsg && (
+          <p className="text-xs text-rose-300">
+            {errorMsg}
+          </p>
+        )}
       </div>
     </motion.div>
   );
@@ -260,6 +285,7 @@ export default function ProductivityPage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [calendarFilter, setCalendarFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
   const [tasks, setTasks] = useState([]);
@@ -375,6 +401,10 @@ export default function ProductivityPage() {
     }, 300);
 
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -610,8 +640,8 @@ export default function ProductivityPage() {
     );
   }, [agendaForSelectedDate]);
 
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const darkAmbientStyles = {
     focus: {
@@ -861,6 +891,10 @@ export default function ProductivityPage() {
     return () => cleanupSoundscape();
   }, [soundscapeOn, soundscape]);
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <div
       className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
@@ -884,7 +918,6 @@ export default function ProductivityPage() {
 
       <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
         <div className="max-w-6xl mx-auto space-y-12">
-          <Navbar />
           <section className="text-center space-y-4">
             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${isDark
                 ? "bg-white/10 border border-white/10 text-white"
@@ -1028,9 +1061,7 @@ export default function ProductivityPage() {
                   )}
                 </div>
               </motion.div>
-              <div className="mt-6">
-                <AcademicEligibilityCard />
-              </div>
+              <ProductivityTrendsSection isDark={isDark} w-full overflow-hidden/>
             </div>
 
             <div className="space-y-8">
@@ -1203,7 +1234,6 @@ export default function ProductivityPage() {
                   ))}
                 </div>
               </motion.div>
-
               <AgendaListSection
                 selectedDateLabel={selectedDateLabel}
                 agendaForSelectedDate={agendaForSelectedDate}
@@ -1217,7 +1247,9 @@ export default function ProductivityPage() {
                 removeAgendaItem={removeAgendaItem}
                 isDark={isDark}
               />
-
+              <div className="mt-6">
+                <AcademicEligibilityCard isDark={isDark} />
+              </div>
               <motion.div
                 className={`${isDark
                     ? "bg-black/40 border border-white/10 backdrop-blur-xl"

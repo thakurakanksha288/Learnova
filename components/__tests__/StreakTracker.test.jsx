@@ -24,18 +24,18 @@ Object.defineProperty(window, "localStorage", {
 describe("StreakTracker Component", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("should initialize streak to 1 and store today as lastActiveDate on first render", () => {
     render(<StreakTracker />);
     
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/1 Day Streak/i);
@@ -60,7 +60,7 @@ describe("StreakTracker Component", () => {
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/4 Days Streak/i);
@@ -79,7 +79,7 @@ describe("StreakTracker Component", () => {
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/5 Days Streak/i);
@@ -99,7 +99,7 @@ describe("StreakTracker Component", () => {
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/1 Day Streak/i);

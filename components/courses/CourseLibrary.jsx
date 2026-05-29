@@ -142,7 +142,7 @@ export default function CourseLibrary({
 
                       <Link
                         href={`/courses/${course.id}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-850 hover:bg-slate-800 hover:border-slate-700 hover:text-white text-xs font-bold text-slate-300 transition-all duration-300 select-none group/btn shadow-md"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 hover:text-white text-xs font-bold text-slate-300 transition-all duration-300 select-none group/btn shadow-md"
                       >
                         Explore
                         <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover/btn:translate-x-1 group-hover/btn:text-white transition-all duration-200" />

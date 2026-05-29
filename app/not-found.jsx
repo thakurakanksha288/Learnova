@@ -99,7 +99,7 @@ export default function NotFound() {
           {/* Go to Dashboard */}
           <Link
             href="/student/dashboard"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 active:scale-95 text-slate-700 dark:text-slate-200 font-bold py-3.5 px-8 shadow-md transition-all duration-300 select-none group"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-200 font-bold py-3.5 px-8 shadow-md transition-all duration-300 select-none group"
           >
             <BookOpen className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
             Go to Dashboard

@@ -1,33 +1,27 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import CommandPalette from './CommandPalette';
+// ─── Why this wrapper exists ──────────────────────────────────────────────────
+// CommandPalette is a pure presentational component — it requires `isOpen` and
+// `onClose` as props and has no internal state of its own.
+//
+// useCommandPalette is the stateful hook — it owns the `isOpen` boolean and
+// registers the global Ctrl+K keyboard shortcut listener.
+//
+// Conflict resolved: layout.js must import THIS wrapper, not CommandPalette
+// directly. Importing CommandPalette directly would leave `isOpen` always
+// undefined (falsy), so the palette would never open.
+// ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Presentational component (requires isOpen + onClose props) ──────────────
+import CommandPalette from "@/components/CommandPalette";
+
+// ─── Stateful hook (owns isOpen, registers Ctrl+K listener) ─────────────────
+import useCommandPalette from "@/hooks/useCommandPalette";
+
+// ─── Wrapper: bridges hook state → presentational component ─────────────────
 export default function CommandPaletteWrapper() {
-  const [isOpen, setIsOpen] = useState(false);
+  // Destructure only what CommandPalette needs: open state + close handler
+  const { isOpen, close } = useCommandPalette();
 
-  useEffect(() => {
-    const handleOpen = () => setIsOpen(true);
-    const handleClose = () => setIsOpen(false);
-
-    window.addEventListener('learnova:open-search', handleOpen);
-    window.addEventListener('learnova:open-shortcuts', handleOpen);
-
-    // Support standard Ctrl+K (or Cmd+K) shortcut for instant premium command search
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('learnova:open-search', handleOpen);
-      window.removeEventListener('learnova:open-shortcuts', handleOpen);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  return <CommandPalette isOpen={isOpen} onClose={() => setIsOpen(false)} />;
+  return <CommandPalette isOpen={isOpen} onClose={close} />;
 }

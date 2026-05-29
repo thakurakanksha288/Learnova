@@ -242,13 +242,18 @@ export default function AuthForm({
                   errors.password ? "border-red-500/50" : "border-border"
                 }`}
               />
-            );
-          })}
-        </div>
-      </div>
-    )}
-  </div>
-  {!isLogin && (
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
+          </div>
+
+          {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Confirm Password
@@ -261,11 +266,10 @@ export default function AuthForm({
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => {
-                  const value = e.target.value;
-                  setConfirmPassword(value);
-                  // Run validation on every stroke so error clearing/setting is truly instant
-                  validateField("confirmPassword", value);
-                }}
+                    const value = e.target.value;
+                    setConfirmPassword(value);
+                    validateField("confirmPassword", value);
+                  }}
                   onBlur={(e) => validateField("confirmPassword", e.target.value)}
                   className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
                     errors.confirmPassword ? "border-red-500/50" : "border-border"
@@ -288,17 +292,18 @@ export default function AuthForm({
               )}
             </div>
           )}
-  {isLogin && (
-    <div className="text-right">
-      <button
-        type="button"
-        onClick={onForgotPassword}
-        className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
-      >
-        Forgot password?
-      </button>
-    </div>
-  )}
+
+          {isLogin && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"

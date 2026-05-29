@@ -85,33 +85,21 @@ export default function ComplaintsTable({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-transparent dark:bg-[#0b1120] text-black dark:text-white outline-none w-full"
+            className="bg-background text-foreground outline-none w-full"
           >
-            <option
-              value="All"
-              className="bg-white text-black dark:bg-[#0b1120] dark:text-white"
-            >
+            <option value="All" className="bg-background text-foreground">
               All
             </option>
 
-            <option
-              value="Pending"
-              className="bg-white text-black dark:bg-[#0b1120] dark:text-white"
-            >
+            <option value="Pending" className="bg-background text-foreground">
               Pending
             </option>
 
-            <option
-              value="Resolved"
-              className="bg-white text-black dark:bg-[#0b1120] dark:text-white"
-            >
+            <option value="Resolved" className="bg-background text-foreground">
               Resolved
             </option>
 
-            <option
-              value="Not Resolved"
-              className="bg-white text-black dark:bg-[#0b1120] dark:text-white"
-            >
+            <option value="Not Resolved" className="bg-background text-foreground">
               Not Resolved
             </option>
           </select>

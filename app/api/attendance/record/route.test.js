@@ -6,10 +6,10 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
-jest.mock("@/lib/error-handler", () => {
+vi.mock("@/lib/error-handler", () => {
   const { AppError } = require("@/lib/errors");
   return {
-    authenticateRequest: jest.fn(),
+    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
@@ -29,35 +29,35 @@ jest.mock("@/lib/error-handler", () => {
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  initFirebaseAdmin: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  initFirebaseAdmin: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
 }));
 
-jest.mock("@/lib/dateUtils", () => ({
-  getLocalDateKey: jest.fn(() => "2026-05-25"),
+vi.mock("@/lib/dateUtils", () => ({
+  getLocalDateKey: vi.fn(() => "2026-05-25"),
 }));
 
-jest.mock("firebase-admin/firestore", () => ({
-  getFirestore: jest.fn(),
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(),
   FieldValue: {
-    serverTimestamp: jest.fn(() => "server-timestamp"),
+    serverTimestamp: vi.fn(() => "server-timestamp"),
   },
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -68,7 +68,7 @@ jest.mock("next/server", () => ({
 
 describe("attendance record route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
 
@@ -107,15 +107,15 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: false });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: false });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST(createMockRequest());
@@ -159,15 +159,15 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: true });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: true });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST(createMockRequest());
@@ -255,12 +255,12 @@ describe("attendance record route", () => {
     });
 
     const docRef = "user-123_2026-05-25";
-    const collectionRef = { doc: jest.fn(() => docRef) };
+    const collectionRef = { doc: vi.fn(() => docRef) };
 
     const dbStore = new Map();
-    const transactionSet = jest.fn();
+    const transactionSet = vi.fn();
 
-    const runTransaction = jest.fn(async (callback) => {
+    const runTransaction = vi.fn(async (callback) => {
       let attempts = 0;
       while (attempts < 5) {
         attempts++;
@@ -288,7 +288,7 @@ describe("attendance record route", () => {
 
     getFirestore.mockReturnValue({
       runTransaction,
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const [response1, response2] = await Promise.all([

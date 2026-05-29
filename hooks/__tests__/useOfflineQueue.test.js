@@ -2,11 +2,11 @@ import { renderHook } from "@testing-library/react";
 import { useOfflineQueue } from "../useOfflineQueue";
 import toast from "react-hot-toast";
 
-jest.mock("react-hot-toast", () => ({
-  loading: jest.fn(),
-  success: jest.fn(),
-  error: jest.fn(),
-  dismiss: jest.fn(),
+vi.mock("react-hot-toast", () => ({
+  loading: vi.fn(),
+  success: vi.fn(),
+  error: vi.fn(),
+  dismiss: vi.fn(),
 }));
 
 describe("useOfflineQueue hook", () => {
@@ -15,19 +15,19 @@ describe("useOfflineQueue hook", () => {
   let mockPostMessage;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     swListeners = {};
     windowListeners = {};
-    mockPostMessage = jest.fn();
+    mockPostMessage = vi.fn();
 
     // Mock navigator.serviceWorker
     Object.defineProperty(global, "navigator", {
       value: {
         serviceWorker: {
-          addEventListener: jest.fn((event, callback) => {
+          addEventListener: vi.fn((event, callback) => {
             swListeners[event] = callback;
           }),
-          removeEventListener: jest.fn((event, callback) => {
+          removeEventListener: vi.fn((event, callback) => {
             delete swListeners[event];
           }),
           controller: {
@@ -40,16 +40,16 @@ describe("useOfflineQueue hook", () => {
     });
 
     // Spy on window.addEventListener
-    jest.spyOn(window, "addEventListener").mockImplementation((event, callback) => {
+    vi.spyOn(window, "addEventListener").mockImplementation((event, callback) => {
       windowListeners[event] = callback;
     });
-    jest.spyOn(window, "removeEventListener").mockImplementation((event, callback) => {
+    vi.spyOn(window, "removeEventListener").mockImplementation((event, callback) => {
       delete windowListeners[event];
     });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test("should register service worker and window event listeners on mount", () => {

@@ -7,12 +7,14 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
+const MAX_BULK_IMPORT_PAYLOAD_BYTES = 1024 * 1024;
+
 export async function POST(req) {
   try {
     // Authenticate and authorize — only institute or admin can bulk-import
     const { payload: decodedToken } = await requireRole(req, ["institute", "admin"]);
 
-    const body = await req.json();
+    const body = await parseJSON(req, MAX_BULK_IMPORT_PAYLOAD_BYTES);
     const { students } = body;
 
     if (!students || !Array.isArray(students)) {
@@ -101,6 +103,13 @@ export async function POST(req) {
     }, { status: 200 });
 
   } catch (error) {
+    if (error.statusCode) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
     console.error("Bulk import error:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
