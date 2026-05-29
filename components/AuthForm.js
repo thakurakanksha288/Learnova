@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
+import { Mail, Lock, Sparkles } from "lucide-react";
 import { ROLE_CONFIG, USER_ROLES } from "@/constants/userRoles";
 import { getPasswordStrength } from "@/utils/passwordStrength";
 import {
-  validateRequired,
-  validateEmail,
-  validatePassword,
-  validateName,
-} from "@/utils/formValidation";
+  getPasswordRequirementFlags,
+  validateAuthField,
+} from "@/utils/authFormValidation";
+import {
+  OptionalInstituteField,
+  PasswordInputField,
+  SelectedRoleBadge,
+  TextInputField,
+} from "@/components/auth/AuthFormFields";
 
 export default function AuthForm({
   isLogin,
@@ -36,9 +40,13 @@ export default function AuthForm({
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const passwordStrength = useMemo(
     () => getPasswordStrength(password || ""),
+    [password]
+  );
+  const passwordRequirements = useMemo(
+    () => getPasswordRequirementFlags(password || ""),
     [password]
   );
 
@@ -49,30 +57,11 @@ export default function AuthForm({
   };
 
   const validateField = (field, value) => {
-    let result = true;
-    if (field === "fullName") {
-      result = validateName(value, "Full Name");
-    } else if (field === "instituteName") {
-      result = validateRequired(value, "Institute Name");
-    } else if (field === "inviteCode") {
-      result = validateRequired(value, "Invite Code");
-    } else if (field === "email") {
-      result = validateEmail(value);
-    } else if (field === "password") {
-      result = isLogin ? validateRequired(value, "Password") : validatePassword(value);
-      // Real-time synchronization check:
-      if (!isLogin && confirmPassword) {
-        if (value === confirmPassword) clearError("confirmPassword");
-        else setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
-      }
-    } else if (field === "confirmPassword") {
-      // Direct verification block:
-      if (!value) {
-        result = "Please confirm your password";
-      } else if (value !== password) {
-        result = "Passwords do not match";
-      }
-    }
+    const result = validateAuthField(field, value, {
+      isLogin,
+      password,
+      confirmPassword,
+    });
 
     if (result !== true) {
       setErrors((prev) => ({ ...prev, [field]: result }));
@@ -81,34 +70,52 @@ export default function AuthForm({
     }
   };
 
+  const handleFieldChange = (field, setter) => (value) => {
+    setter(value);
+
+    if (errors[field]) {
+      validateField(field, value);
+    }
+
+    if (field === "password" && !isLogin && confirmPassword) {
+      const confirmResult = validateAuthField("confirmPassword", confirmPassword, {
+        password: value,
+      });
+
+      if (confirmResult === true) {
+        clearError("confirmPassword");
+      } else {
+        setErrors((prev) => ({ ...prev, confirmPassword: confirmResult }));
+      }
+    }
+  };
+
+  const handleFieldBlur = (field) => (value) => {
+    validateField(field, value);
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!isLogin && password !== confirmPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Passwords do not match",
+      }));
+      return;
+    }
+
+    onSubmit(event);
+  };
+
+  const selectedRoleConfig = selectedRole ? ROLE_CONFIG[selectedRole] : null;
+
   return (
     <div>
       {/* Selected Role Display */}
-      {selectedRole && ROLE_CONFIG[selectedRole] && (
-        <div className="mb-6">
-          <button
-            onClick={onRoleChange}
-            className="inline-flex items-center gap-3 p-4 bg-card backdrop-blur-sm rounded-xl border border-border hover:border-indigo-500/50 transition-all duration-200"
-          >
-            {(() => {
-              const config = ROLE_CONFIG[selectedRole];
-              if (!config) return null;
-              const IconComponent = config.icon;
-              return (
-                <>
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}>
-                    <IconComponent className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <h4 className="font-semibold text-card-foreground">{config.title}</h4>
-                    <p className="text-muted-foreground text-sm">Click to change role</p>
-                  </div>
-                </>
-              );
-            })()}
-          </button>
-        </div>
-      )}
+      {selectedRoleConfig ? (
+        <SelectedRoleBadge config={selectedRoleConfig} onClick={onRoleChange} />
+      ) : null}
 
       <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8 min-h-[620px] flex flex-col justify-between transition-all duration-300">
         <div className="text-center mb-8">
@@ -128,170 +135,78 @@ export default function AuthForm({
           </div>
         )}
 
-        <form 
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!isLogin && password !== confirmPassword) {
-              setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
-              return;
-            }
-            onSubmit(e);
-          }} 
-          className="space-y-6"
-        >
-  {!isLogin && (
-    <>
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Full Name
-        </label>
-        <input
-          type="text"
-          name="fullName"
-          placeholder="Enter your full name"
-          value={fullName}
-          onChange={(e) => {
-            const value = e.target.value;
-            setFullName(value);
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {!isLogin ? (
+            <>
+              <TextInputField
+                label="Full Name"
+                name="fullName"
+                value={fullName}
+                onChange={handleFieldChange("fullName", setFullName)}
+                onBlur={handleFieldBlur("fullName")}
+                error={errors.fullName}
+                placeholder="Enter your full name"
+              />
 
-                    if (errors.fullName) {
-                      validateField("fullName", value);
-                    }
-                  }}
-                  onBlur={(e) => validateField("fullName", e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-                    errors.fullName ? "border-red-500/50" : "border-border"
-                  }`}
+              {selectedRole === USER_ROLES.INSTITUTE ? (
+                <OptionalInstituteField
+                  label="Institute Name"
+                  name="instituteName"
+                  value={instituteName}
+                  onChange={handleFieldChange("instituteName", setInstituteName)}
+                  onBlur={handleFieldBlur("instituteName")}
+                  error={errors.instituteName}
+                  placeholder="Enter your institute name"
                 />
-                {errors.fullName && <p className="text-red-400 text-sm mt-1">{errors.fullName}</p>}
-              </div>
-
-              {selectedRole === USER_ROLES.INSTITUTE && (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Institute Name</label>
-                  <input
-                    type="text"
-                    name="instituteName"
-                    placeholder="Enter your institute name"
-                    value={instituteName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setInstituteName(value);
-                      if (errors.instituteName) {
-                        validateField("instituteName", value);
-                      }
-                    }}
-                    onBlur={(e) => validateField("instituteName", e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-                      errors.instituteName ? "border-red-500/50" : "border-border"
-                    }`}
-                  />
-                  {errors.instituteName && <p className="text-red-400 text-sm mt-1">{errors.instituteName}</p>}
-                </div>
-              )}
+              ) : null}
             </>
-          )}
+          ) : null}
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                maxLength={254}
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setEmail(value);
-                  if (errors.email) {
-                    validateField("email", value);
-                  }
-                }}
-                onBlur={(e) => validateField("email", e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-                  errors.email ? "border-red-500/50" : "border-border"
-                }`}
-              />
-            </div>
-            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
-          </div>
+          <TextInputField
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            maxLength={254}
+            value={email}
+            onChange={handleFieldChange("email", setEmail)}
+            onBlur={handleFieldBlur("email")}
+            error={errors.email}
+            placeholder="Enter your email"
+            icon={Mail}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                autoComplete={isLogin ? "current-password" : "new-password"}
-                maxLength={254}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setPassword(value);
-                  if (errors.password) {
-                    validateField("password", value);
-                  }
-                }}
-                onBlur={(e) => validateField("password", e.target.value)}
-                className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-                  errors.password ? "border-red-500/50" : "border-border"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
-          </div>
+          <PasswordInputField
+            label="Password"
+            name="password"
+            autoComplete={isLogin ? "current-password" : "new-password"}
+            maxLength={254}
+            value={password}
+            onChange={handleFieldChange("password", setPassword)}
+            onBlur={handleFieldBlur("password")}
+            error={errors.password}
+            placeholder="Enter your password"
+            icon={Lock}
+            isVisible={showPassword}
+            onToggleVisibility={() => setShowPassword((prev) => !prev)}
+            showRequirements={!isLogin}
+            requirements={passwordRequirements}
+            strength={passwordStrength}
+          />
 
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setConfirmPassword(value);
-                    validateField("confirmPassword", value);
-                  }}
-                  onBlur={(e) => validateField("confirmPassword", e.target.value)}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-                    errors.confirmPassword ? "border-red-500/50" : "border-border"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
-              )}
-            </div>
-          )}
+          {!isLogin ? (
+            <PasswordInputField
+              label="Confirm Password"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={handleFieldChange("confirmPassword", setConfirmPassword)}
+              onBlur={handleFieldBlur("confirmPassword")}
+              error={errors.confirmPassword}
+              placeholder="Confirm your password"
+              icon={Lock}
+              isVisible={showConfirmPassword}
+              onToggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
+            />
+          ) : null}
 
           {isLogin && (
             <div className="text-right">
