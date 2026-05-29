@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react()],
   esbuild: {
     loader: 'jsx',
-    include: /.*\.[tj]sx?$/,
+    include: /.*\.js$/,
     exclude: [],
   },
   test: {
