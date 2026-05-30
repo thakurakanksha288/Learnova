@@ -66,9 +66,11 @@ let sharedStream = null;
 let sharedDb = null;
 let streamReconnectTimer = null;
 let streamReconnectRetryCount = 0;
+let streamGeneration = 0;
 
 async function startChangeStream() {
   stopChangeStream();
+  const gen = ++streamGeneration;
   try {
     sharedDb = await connectDbForSSE();
     const coll = sharedDb.collection("notices");
@@ -77,15 +79,24 @@ async function startChangeStream() {
       const doc = change.fullDocument;
       if (doc) broadcastNotice(doc);
     });
-    sharedStream.on("error", () => scheduleChangeStreamReconnect());
-    sharedStream.on("close", () => scheduleChangeStreamReconnect());
+    sharedStream.on("error", () => {
+      if (streamGeneration !== gen) return;
+      scheduleChangeStreamReconnect();
+    });
+    sharedStream.on("close", () => {
+      if (streamGeneration !== gen) return;
+      scheduleChangeStreamReconnect();
+    });
     streamReconnectRetryCount = 0;
   } catch {
-    scheduleChangeStreamReconnect();
+    if (streamGeneration === gen) {
+      scheduleChangeStreamReconnect();
+    }
   }
 }
 
 function stopChangeStream() {
+  streamGeneration++;
   if (streamReconnectTimer) {
     clearTimeout(streamReconnectTimer);
     streamReconnectTimer = null;
