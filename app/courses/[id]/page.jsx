@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -38,50 +40,53 @@ export default function CourseDetailPage() {
   const [originText, setOriginText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // --- AI TIMELINE FEATURE STATES ---
+  const videoRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredTimestamps, setFilteredTimestamps] = useState([]);
+
+  // Mock Data mimicking what an AI Video Intelligence API returns
+  const mockVideoAIProperties = {
+    duration: 300, 
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    conceptMap: [
+      { start: 0, end: 60, concept: "Introduction" },
+      { start: 61, end: 180, concept: "Core Architecture" },
+      { start: 181, end: 300, concept: "Advanced Optimization" }
+    ],
+    transcripts: [
+      { start: 15, text: "Welcome to this lecture on server side processes." },
+      { start: 75, text: "Let's dive deep into how backpropagation updates weights." },
+      { start: 120, text: "The chain rule is absolutely essential for understanding backpropagation." },
+      { start: 210, text: "Next, we will focus on progressive hydration patterns." }
+    ]
+  };
+  const containerRef = useRef(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Listen for user text selection to enable quick flashcard creation
+  
   useEffect(() => {
-    function handleSelection() {
-      try {
-        const sel = window.getSelection();
-        const text = sel ? sel.toString().trim() : "";
-        if (!text) {
-          setSelectionText("");
-          setSelectionRect(null);
-          setOriginText("");
-          return;
-        }
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const anchorNode = range.startContainer.parentElement;
-        const originElement = anchorNode?.closest("p,div,section,article") ?? anchorNode;
-        const origin = originElement?.innerText?.trim() || text;
-        setSelectionText(text);
-        setOriginText(origin);
-        setSelectionRect({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
-      } catch (e) {
-        // ignore
-      }
+    if (!searchQuery.trim()) {
+      setFilteredTimestamps([]);
+      return;
     }
+    const matches = mockVideoAIProperties.transcripts.filter(t =>
+      t.text.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredTimestamps(matches);
+  }, [searchQuery]);
 
-    const onMouseUp = () => setTimeout(handleSelection, 10);
-    const onKeyUp = () => setTimeout(handleSelection, 10);
-    const onScroll = () => setSelectionRect(null);
-
-    document.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("keyup", onKeyUp);
-    window.addEventListener("scroll", onScroll, true);
-
-    return () => {
-      document.removeEventListener("mouseup", onMouseUp);
-      document.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("scroll", onScroll, true);
-    };
-  }, []);
-
+  // Command the video player HTML element to jump to a specific time
+  const handleSeek = (seconds) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = seconds;
+      videoRef.current.play();
+      toast.success(`Jumped to ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
+    }
+  };
   if (!mounted) return null;
 
   // Mock course data matching params.id
@@ -177,6 +182,68 @@ export default function CourseDetailPage() {
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-400 mb-6 leading-tight">
             {course.title}
           </h1>
+          {/* 🌟 AI INTERACTIVE TIMELINE INTERFACE 🌟 */}
+          <div className="my-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 shadow-xl">
+            {/* The Video Stream */}
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black mb-4">
+              <video 
+                ref={videoRef}
+                src={mockVideoAIProperties.videoUrl} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Segmented AI Concept Map Progress Track */}
+            <div className="mb-6">
+              <span className="text-xs font-semibold text-zinc-400 block mb-2 tracking-wider uppercase">AI Concept Map Timeline</span>
+              <div className="h-3 w-full bg-zinc-800 rounded-full flex overflow-hidden">
+                {mockVideoAIProperties.conceptMap.map((segment, index) => {
+                  const segmentWidth = ((segment.end - segment.start) / mockVideoAIProperties.duration) * 100;
+                  const trackColors = ["bg-indigo-600/60", "bg-purple-600/60", "bg-pink-600/60"];
+                  return (
+                    <div 
+                      key={index}
+                      style={{ width: `${segmentWidth}%` }}
+                      className={`${trackColors[index % trackColors.length]} h-full border-r border-zinc-950/40 cursor-pointer transition-all hover:brightness-125`}
+                      onClick={() => handleSeek(segment.start)}
+                      title={`${segment.concept} (Click to jump)`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* User Search Input Field */}
+            <div className="relative">
+              <input 
+                type="text"
+                placeholder="Type a topic to scan video timeline (e.g., 'backpropagation')..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Dropdown list of timestamps found by AI string filtering */}
+            {filteredTimestamps.length > 0 && (
+              <div className="mt-3 bg-zinc-950 rounded-xl border border-zinc-800 p-3 space-y-2 max-h-48 overflow-y-auto">
+                <span className="text-xs text-indigo-400 font-bold block px-1">AI Matches Found:</span>
+                {filteredTimestamps.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSeek(item.start)}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-900 transition-colors text-sm"
+                  >
+                    <span className="text-indigo-400 font-mono font-semibold">
+                      {Math.floor(item.start / 60)}:${String(item.start % 60).padStart(2, '0')}
+                    </span>
+                    <span className="text-zinc-300 line-clamp-1">{item.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="mb-8 max-w-3xl">
             <MarkdownRenderer content={course.description} />
