@@ -223,12 +223,45 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-> [!NOTE]
-> If you need to run the application on a custom port, use the standard Next.js port configuration:
-> ```bash
-> npm run dev -- -p <port_number>
-> ```
-> Avoid using deprecated environment variables like `PORT` directly in the shell as it is not cross-platform compatible.
+---
+
+## 🛠️ Troubleshooting
+
+### `npm install` fails
+
+- Use **Node.js 18+** (`node -v`).
+- Delete `node_modules` and `package-lock.json`, then run `npm install` again.
+- On Apple Silicon, if native modules fail, try `npm install --legacy-peer-deps`.
+
+### Missing or incorrect environment variables
+
+- Ensure `.env.local` exists in the project root (not committed to git).
+- Restart the dev server after changing env vars — Next.js only reads them at startup.
+- Verify Firebase keys match your Firebase console project settings.
+
+### Firebase auth / configuration errors
+
+- Confirm **Email/Password** sign-in is enabled in Firebase Authentication.
+- Check that `NEXT_PUBLIC_FIREBASE_*` values are complete and have no trailing spaces.
+- For local testing, add `localhost` to Firebase authorized domains if redirects fail.
+
+### Port already in use (`EADDRINUSE`)
+
+- Another process may be using port 3000. Stop it or run `npm run dev -- -p 3001`.
+- On macOS/Linux: `lsof -i :3000` to find the blocking process.
+
+### Dev server or build failures
+
+- Clear the Next.js cache: `rm -rf .next` then `npm run dev`.
+- Run `npm run build` locally to surface TypeScript or lint errors before deploying.
+- Check the terminal for missing `MONGODB_URI` or Firebase errors on API routes.
+
+### MongoDB connection issues
+
+- Confirm `MONGODB_URI` includes the database name and valid credentials.
+- For Atlas, allow your current IP in Network Access and verify the cluster is running.
+
+---
 
 ### 5. Build for production
 
