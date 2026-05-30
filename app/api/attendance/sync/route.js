@@ -7,6 +7,7 @@ import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
+import { executeSaga } from "@/lib/transactionCoordinator";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -145,63 +146,55 @@ async function handleSync(request) {
       continue;
     }
 
-    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+    // Use saga to atomically write attendance + award XP.
+    // If XP awarding fails, attendance is still recorded (it's the primary write),
+    // but the saga tracks the failure for reconciliation.
+    const sagaResult = await executeSaga({
+      operationType: "attendance_sync",
+      uid: decodedToken.uid,
+      steps: [
+        {
+          name: "write_attendance",
+          execute: async () => {
+            const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+            await db.runTransaction(async (transaction) => {
+              const existingAttendance = await transaction.get(newDocRef);
+              if (existingAttendance.exists) {
+                // Already recorded — skip write but don't throw (idempotent)
+                return;
+              }
 
-    let wasWritten = false;
-    try {
-      wasWritten = await db.runTransaction(async (transaction) => {
-        const existingAttendance = await transaction.get(newDocRef);
-        if (existingAttendance.exists) {
-          return false;
-        }
-
-        if (
-          (record.studentName && record.studentName !== serverIdentity.studentName) ||
-          (record.email && record.email !== serverIdentity.email)
-        ) {
-          console.warn(
-            `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-          );
-        }
-
-        transaction.set(newDocRef, {
-          userId: decodedToken.uid,
-          studentName: serverIdentity.studentName,
-          email: serverIdentity.email,
-          instituteId,
-          timestamp: FieldValue.serverTimestamp(),
-          date: recordDate,
-          status: "present",
-          confidenceScore: normalizedConfidence,
-          offlineSynced: true,
-          queuedAt: new Date(record.queuedAt),
-        });
-
-        return true;
-      });
-    } catch (txnError) {
-      console.error(
-        `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
-        txnError.message,
-      );
-      continue;
-    }
+              transaction.set(newDocRef, {
+                userId: decodedToken.uid,
+                studentName: serverIdentity.studentName,
+                email: serverIdentity.email,
+                instituteId,
+                timestamp: FieldValue.serverTimestamp(),
+                date: recordDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: true,
+                queuedAt: new Date(record.queuedAt),
+              });
+            });
+          },
+          compensate: null, // Attendance writes are append-only; no rollback needed
+        },
+        {
+          name: "award_xp",
+          execute: async () => {
+            await awardXp(decodedToken.uid, "attendance_marked", {
+              attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
+            });
+          },
+          compensate: null, // XP is a side-effect; failure doesn't block attendance
+        },
+      ],
+    });
 
     successfulIds.push(record.id);
 
-    if (!wasWritten) {
-      continue;
-    }
-
     processedUserDates.add(userDateKey);
-
-    try {
-      await awardXp(decodedToken.uid, "attendance_marked", {
-        attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
-      });
-    } catch (error) {
-      console.error(`Failed to award XP for offline-synced record (${decodedToken.uid}_${recordDate}):`, error);
-    }
   }
 
   return NextResponse.json({

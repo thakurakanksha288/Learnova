@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
+import { executeSaga } from "@/lib/transactionCoordinator";
 
 import { withValidation } from "@/lib/validations/withValidation";
 import { setRoleSchema } from "@/lib/validations/auth";
@@ -61,10 +62,6 @@ export const POST = withValidation(
       );
     }
 
-    await admin.auth().setCustomUserClaims(decodedToken.uid, {
-      role,
-    });
-
     const userProfile = {
       uid: decodedToken.uid,
       email: decodedToken.email,
@@ -79,62 +76,79 @@ export const POST = withValidation(
       userProfile.instituteName = instituteName;
     }
 
-    await db
-      .collection("users")
-      .doc(decodedToken.uid)
-      .set(userProfile, { merge: true });
-
-    // Sync user to MongoDB so gamification (awardXp) and biometric labels
-    // endpoints can locate the student by their Firebase UID.
-    const MAX_MONGO_RETRIES = 3;
-    const RETRY_BASE_DELAY_MS = 500;
-
-    for (let attempt = 1; attempt <= MAX_MONGO_RETRIES; attempt++) {
-      try {
-        const mongoDB = await connectDb();
-        const now = new Date().toISOString();
-
-        await mongoDB.collection("users").updateOne(
-          { firebaseUid: decodedToken.uid },
-          {
-            $set: {
-              firebaseUid: decodedToken.uid,
-              email: decodedToken.email,
-              name: fullName,
-              fullName,
-              role,
-              lastLogin: now,
-            },
-            $setOnInsert: {
-              totalXp: 0,
-              currentLevel: 1,
-              xpToNextLevel: 100,
-              currentStreak: 0,
-              unlockedBadges: [],
-              attendanceHistory: [],
-              createdAt: now,
-            },
+    const sagaResult = await executeSaga({
+      operationType: "set_role",
+      uid: decodedToken.uid,
+      steps: [
+        {
+          name: "set_auth_claims",
+          execute: async () => {
+            await admin.auth().setCustomUserClaims(decodedToken.uid, { role });
           },
-          { upsert: true }
-        );
-        break;
-      } catch (mongoErr) {
-        if (attempt === MAX_MONGO_RETRIES) {
-          console.error("[set-role] MongoDB sync failed after", MAX_MONGO_RETRIES, "attempts:", mongoErr.message);
-          // Roll back Firestore profile and auth claims so the user is not left
-          // in a partial state (Firestore exists, MongoDB missing).
-          try {
-            await db.collection("users").doc(decodedToken.uid).delete();
+          compensate: async () => {
             await admin.auth().setCustomUserClaims(decodedToken.uid, {});
-          } catch (rollbackErr) {
-            console.error("[set-role] Rollback failed:", rollbackErr.message);
-          }
-          return jsonError("Account setup failed due to a server error. Please try again.", 500);
-        }
-        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-        console.warn("[set-role] MongoDB sync attempt", attempt, "failed, retrying in", delay, "ms:", mongoErr.message);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+          },
+        },
+        {
+          name: "write_firestore",
+          execute: async () => {
+            await db
+              .collection("users")
+              .doc(decodedToken.uid)
+              .set(userProfile, { merge: true });
+          },
+          compensate: async () => {
+            await db.collection("users").doc(decodedToken.uid).delete();
+          },
+        },
+        {
+          name: "write_mongodb",
+          execute: async () => {
+            const mongoDB = await connectDb();
+            const now = new Date().toISOString();
+            await mongoDB.collection("users").updateOne(
+              { firebaseUid: decodedToken.uid },
+              {
+                $set: {
+                  firebaseUid: decodedToken.uid,
+                  email: decodedToken.email,
+                  name: fullName,
+                  fullName,
+                  role,
+                  lastLogin: now,
+                },
+                $setOnInsert: {
+                  totalXp: 0,
+                  currentLevel: 1,
+                  xpToNextLevel: 100,
+                  currentStreak: 0,
+                  unlockedBadges: [],
+                  attendanceHistory: [],
+                  createdAt: now,
+                },
+              },
+              { upsert: true }
+            );
+          },
+          compensate: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("users").deleteOne({ firebaseUid: decodedToken.uid });
+          },
+        },
+      ],
+    });
+
+    if (!sagaResult.success) {
+      if (sagaResult.fullyCompensated) {
+        return jsonError(
+          "Account setup failed due to a server error. All changes have been rolled back. Please try again.",
+          500
+        );
       }
+      return jsonError(
+        "Account setup failed and some changes could not be rolled back. Please contact support for manual reconciliation.",
+        500
+      );
     }
 
     return jsonSuccess({ userProfile }, 201);

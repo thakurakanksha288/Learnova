@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { initFirebaseAdmin, getAdminDb } from "@/lib/firebase-admin";
-import { parseJSON } from "@/lib/error-handler";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { checkRateLimit } from "@/lib/rateLimit";
 import { requireRole } from "@/lib/rbac";
+import { executeSaga, findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +26,34 @@ export async function POST(req) {
       );
     }
 
-    const body = await parseJSON(req, MAX_BULK_IMPORT_PAYLOAD_BYTES);
-    const { students } = body;
+    const rawBody = await req.text();
+    const byteLength = new TextEncoder().encode(rawBody).length;
+    if (byteLength > MAX_BULK_IMPORT_PAYLOAD_BYTES) {
+      return NextResponse.json(
+        { error: "Payload too large" },
+        { status: 413 }
+      );
+    }
+
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      );
+    }
+
+    const { students, idempotencyKey } = body;
+
+    // Check idempotency — if this import was already completed, return cached result
+    if (idempotencyKey && typeof idempotencyKey === "string") {
+      const existing = await findExistingOperation(idempotencyKey);
+      if (existing?.idempotentResult) {
+        return NextResponse.json(existing.idempotentResult, { status: 200 });
+      }
+    }
 
     if (!students || !Array.isArray(students)) {
       return NextResponse.json(
@@ -45,81 +72,113 @@ export async function POST(req) {
 
     let successfulImports = 0;
     const failedImports = [];
+    const createdAuthUids = [];
 
-    // Process students sequentially or in parallel batches
+    // Process students sequentially with per-student rollback
     for (const student of students) {
       const { name, email, rollNo, department } = student;
-      const password = crypto.randomUUID();
+      const defaultPassword = crypto.randomUUID();
+      let studentAuthUid = null;
 
       try {
-        // 1. Create Firebase Auth user
-        let userRecord;
-        let userAlreadyExisted = false;
-        try {
-          userRecord = await admin.auth().getUserByEmail(email);
-          userAlreadyExisted = true;
-        } catch (error) {
-          if (error.code === 'auth/user-not-found') {
-            userRecord = await admin.auth().createUser({
-              email: email,
-              password: password,
-              displayName: name,
-              emailVerified: true,
-            });
-          } else {
-            throw error;
-          }
-        }
+        // Per-student saga: Auth → Firestore → MongoDB
+        const sagaResult = await executeSaga({
+          operationType: "bulk_import_student",
+          uid: `bulk_${email}`,
+          steps: [
+            {
+              name: "create_firebase_auth",
+              execute: async () => {
+                let userRecord;
+                try {
+                  userRecord = await admin.auth().getUserByEmail(email);
+                } catch (error) {
+                  if (error.code === 'auth/user-not-found') {
+                    userRecord = await admin.auth().createUser({
+                      email: email,
+                      password: defaultPassword,
+                      displayName: name,
+                    });
+                  } else {
+                    throw error;
+                  }
+                }
+                studentAuthUid = userRecord.uid;
+                createdAuthUids.push(userRecord.uid);
+                return userRecord;
+              },
+              compensate: async () => {
+                if (studentAuthUid) {
+                  try {
+                    await admin.auth().deleteUser(studentAuthUid);
+                    const idx = createdAuthUids.indexOf(studentAuthUid);
+                    if (idx > -1) createdAuthUids.splice(idx, 1);
+                  } catch {}
+                }
+              },
+            },
+            {
+              name: "write_firestore",
+              execute: async () => {
+                await firestore.collection("users").doc(studentAuthUid).set({
+                  fullName: name,
+                  email: email,
+                  role: "student",
+                  rollNo: rollNo,
+                  department: department,
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  isBulkImported: true,
+                }, { merge: true });
+              },
+              compensate: async () => {
+                if (studentAuthUid) {
+                  try {
+                    await firestore.collection("users").doc(studentAuthUid).delete();
+                  } catch {}
+                }
+              },
+            },
+            {
+              name: "write_mongodb",
+              execute: async () => {
+                const existingMongoUser = await mongoUsers.findOne({
+                  $or: [{ email }, { rollNo }],
+                });
 
-        // 2. Persist to Firestore (used by dashboard and auth checks)
-        try {
-          await firestore.collection("users").doc(userRecord.uid).set({
-            fullName: name,
-            email: email,
-            role: "student",
-            rollNo: rollNo,
-            department: department,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            isBulkImported: true,
-          }, { merge: true });
-        } catch (firestoreErr) {
-          // Roll back Firebase Auth user if we just created it
-          if (!userAlreadyExisted) {
-            try { await admin.auth().deleteUser(userRecord.uid); } catch {}
-          }
-          throw firestoreErr;
-        }
-
-        // 3. Persist to MongoDB (used by face recognition system)
-        // Check if user exists in Mongo
-        const existingMongoUser = await mongoUsers.findOne({
-          $or: [{ email }, { rollNo }],
+                if (!existingMongoUser) {
+                  await mongoUsers.insertOne({
+                    name,
+                    rollNo,
+                    email,
+                    department,
+                    firebaseUid: studentAuthUid,
+                    isBulkImported: true,
+                    createdAt: new Date(),
+                  });
+                }
+              },
+              compensate: async () => {
+                if (studentAuthUid) {
+                  try {
+                    await mongoUsers.deleteOne({ firebaseUid: studentAuthUid });
+                  } catch {}
+                }
+              },
+            },
+          ],
         });
 
-        if (!existingMongoUser) {
-          try {
-            await mongoUsers.insertOne({
-              name,
-              rollNo,
-              email,
-              department,
-              firebaseUid: userRecord.uid,
-              isBulkImported: true,
-              createdAt: new Date(),
-            });
-          } catch (mongoErr) {
-            // Roll back Firestore and Firebase Auth if we just created them
-            if (!userAlreadyExisted) {
-              try {
-                await firestore.collection("users").doc(userRecord.uid).delete();
-                await admin.auth().deleteUser(userRecord.uid);
-              } catch {}
-            }
-            throw mongoErr;
-          }
+        if (sagaResult.success) {
+          successfulImports++;
+        } else {
+          failedImports.push({
+            email,
+            rollNo,
+            reason: sagaResult.fullyCompensated
+              ? `Failed at step "${sagaResult.failedStep}" (rolled back)`
+              : `Failed at step "${sagaResult.failedStep}" — manual cleanup may be needed`,
+          });
         }
-
-        successfulImports++;
       } catch (err) {
         failedImports.push({
           email,
@@ -129,11 +188,19 @@ export async function POST(req) {
       }
     }
 
-    return NextResponse.json({
+    const resultPayload = {
       success: true,
       successfulImports,
       failedImports,
-    }, { status: 200 });
+      totalProcessed: students.length,
+    };
+
+    // Mark as idempotent for retry dedup
+    if (idempotencyKey) {
+      await markIdempotent(idempotencyKey, resultPayload);
+    }
+
+    return NextResponse.json(resultPayload, { status: 200 });
 
   } catch (error) {
     if (error.statusCode) {
