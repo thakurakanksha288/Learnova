@@ -108,13 +108,17 @@ async function rateLimit(ip, pathname, request) {
 // Periodically clean up expired entries to prevent unbounded memory growth
 // This runs on every middleware invocation but only cleans every 5 minutes
 let lastCleanupTime = 0;
+
 function cleanupRateLimitMap() {
   const now = Date.now();
+
   if (now - lastCleanupTime < 5 * 60 * 1000) return;
+
   lastCleanupTime = now;
-  for (const [key, entry] of rateLimitMap.entries()) {
+
+  for (const [key, entry] of devRateLimitMap.entries()) {
     if (now > entry.resetTime) {
-      rateLimitMap.delete(key);
+      devRateLimitMap.delete(key);
     }
   }
 }
