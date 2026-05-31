@@ -572,7 +572,7 @@ export default function LearnovaChatbot() {
   const handleSendMessage = useCallback(
     async (messageText) => {
       const text = (typeof messageText === "string" ? messageText : inputMessage).trim();
-      if (!text || isLoading) return;
+      if (!text || text.length > 1000 || isLoading) return;
 
       const userMsg = {
         id: Date.now(),
@@ -815,6 +815,8 @@ export default function LearnovaChatbot() {
                 value={inputMessage}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
+                maxLength={1000}
+                aria-label="Type your message to Nova"
                 placeholder={isHistoryLoading ? "Loading chat history..." : "Ask Nova a question..."}
                 disabled={isHistoryLoading || isLoading}
                 className={`flex-1 resize-none overflow-y-auto py-2.5 pl-4 pr-10 rounded-xl text-sm focus:outline-none transition-all duration-150 border max-h-32 ${themeTokens.input}`}
