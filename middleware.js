@@ -39,8 +39,10 @@ const devRateLimitMap = new Map();
 const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/login",
   "/api/auth/signup",
+  "/api/auth/logout",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
+  "/api/auth/verify-email",
   "/api/auth/verify-otp",
 ];
 
@@ -394,7 +396,11 @@ export async function middleware(request) {
   );
 
   // General API route protection (non-dashboard routes under /api/)
-  if (pathname.startsWith("/api/") && pathname !== "/api/check-groq-config") {
+  if (
+    pathname.startsWith("/api/") &&
+    pathname !== "/api/check-groq-config" &&
+    !isAuthRoute(pathname)
+  ) {
     if (!matchedDashboard) {
       if (!isTokenValid) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
