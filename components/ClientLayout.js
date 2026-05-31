@@ -9,7 +9,7 @@ import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { normalizeStreakCount } from "@/lib/streakUtils";
@@ -199,11 +199,16 @@ export default function ClientLayout() {
 
         if (needsSync && user.uid) {
           const userDocRef = doc(db, "users", user.uid);
-          await updateDoc(userDocRef, {
-            siteStreak: currentStreak,
-            siteLastVisit: lastVisit,
-            siteVisitHistory: history,
-          });
+         await setDoc(
+  userDocRef,
+  {
+    siteStreak: currentStreak,
+    siteLastVisit: lastVisit,
+    siteVisitHistory: history,
+  },
+  { merge: true }
+);
+console.log("[streak-sync] Firestore updated successfully.");
         }
 
       } catch (error) {

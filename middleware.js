@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { Redis } from "@upstash/redis";
 
+const rateLimitMap = new Map();
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
@@ -364,7 +365,7 @@ export async function middleware(request) {
   if (!authToken) {
     authToken = request.cookies.get("authToken")?.value;
   }
-  
+
   // Cryptographically verify the token — decoding alone is not sufficient
   let isTokenValid = false;
   let isEmailVerified = false;
