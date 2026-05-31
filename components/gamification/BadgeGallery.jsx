@@ -13,8 +13,12 @@ export default function BadgeGallery({ unlockedBadges = [] }) {
       </h3>
       <div className="grid grid-cols-3 gap-4">
         {allBadges.map((badge, index) => {
-          const isUnlocked = unlockedBadges.includes(badge.id);
+          const unlockedBadgeSet = useMemo(
+            () => new Set(unlockedBadges),
+            [unlockedBadges]
+          );
 
+          const isUnlocked = unlockedBadgeSet.has(badge.id);
           return (
             <motion.div
               key={badge.id}
@@ -26,7 +30,12 @@ export default function BadgeGallery({ unlockedBadges = [] }) {
                   ? "bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                   : "bg-gray-800/50 border-gray-700 opacity-60 grayscale"
               }`}
-              title={badge.description}
+               title={badge.description}
+                tabIndex={0}
+                role="img"
+                aria-label={`${badge.name}. ${badge.description}. ${
+                  isUnlocked ? "Unlocked" : "Locked"
+                }`}
             >
               <div className="text-3xl mb-2">{badge.icon}</div>
               <p className="text-xs text-center font-medium text-gray-300 leading-tight">

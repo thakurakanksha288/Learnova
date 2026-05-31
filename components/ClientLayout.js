@@ -12,6 +12,7 @@ import { db } from "@/lib/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { normalizeStreakCount } from "@/lib/streakUtils";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -99,7 +100,9 @@ export default function ClientLayout() {
         const todayDateStr = localToday.toISOString().split("T")[0];
 
         // 1. Get client-side localStorage values
-        let clientStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+        let clientStreak = normalizeStreakCount(
+          localStorage.getItem("learnova_site_streak"),
+        );
         let clientLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
         let clientHistory = [];
         try {
@@ -111,7 +114,7 @@ export default function ClientLayout() {
         if (!Array.isArray(clientHistory)) clientHistory = [];
 
         // 2. Fetch Firestore profile variables
-        const firestoreStreak = userProfile?.siteStreak || 0;
+        const firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 
