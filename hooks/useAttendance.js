@@ -11,6 +11,8 @@ import {
 } from "firebase/firestore";
 import { getTodayKeyLocal } from "@/lib/dateUtils";
 import { getUserActivities } from "@/services/activityService";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export const useAttendance = ({ role, user }) => {
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export const useAttendance = ({ role, user }) => {
     const controller = new AbortController();
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/student/gamification", {
+      const res = await apiFetch("/api/student/gamification", {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
@@ -134,7 +136,7 @@ export const useAttendance = ({ role, user }) => {
       setLoading(true);
       setError(null);
       const token = await user.getIdToken();
-      const res = await fetch("/api/institute/stats", {
+      const res = await apiFetch("/api/institute/stats", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!mounted) return;

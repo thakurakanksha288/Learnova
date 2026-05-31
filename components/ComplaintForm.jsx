@@ -66,6 +66,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="student-name"
+            maxLength={100}
             placeholder="Student Name"
             value={form.student}
             onChange={(e) =>
@@ -76,6 +78,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="roll-number"
+            maxLength={20}
             placeholder="Roll Number"
             value={form.roll}
             onChange={(e) =>
@@ -86,6 +90,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="department"
+            maxLength={80}
             placeholder="Department"
             value={form.department}
             onChange={(e) =>
@@ -109,6 +115,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="complaint-title"
+            maxLength={150}
             placeholder="Complaint Title"
             value={form.title}
             onChange={(e) =>
@@ -132,6 +140,8 @@ export default function ComplaintForm({
           <textarea
             rows={6}
             required
+            id="description"
+            maxLength={1000}
             placeholder="Describe your issue..."
             value={form.description}
             onChange={(e) =>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { Redis } from "@upstash/redis";
 
+const rateLimitMap = new Map();
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
@@ -108,13 +109,17 @@ async function rateLimit(ip, pathname, request) {
 // Periodically clean up expired entries to prevent unbounded memory growth
 // This runs on every middleware invocation but only cleans every 5 minutes
 let lastCleanupTime = 0;
+
 function cleanupRateLimitMap() {
   const now = Date.now();
+
   if (now - lastCleanupTime < 5 * 60 * 1000) return;
+
   lastCleanupTime = now;
-  for (const [key, entry] of rateLimitMap.entries()) {
+
+  for (const [key, entry] of devRateLimitMap.entries()) {
     if (now > entry.resetTime) {
-      rateLimitMap.delete(key);
+      devRateLimitMap.delete(key);
     }
   }
 }
@@ -360,7 +365,7 @@ export async function middleware(request) {
   if (!authToken) {
     authToken = request.cookies.get("authToken")?.value;
   }
-  
+
   // Cryptographically verify the token — decoding alone is not sufficient
   let isTokenValid = false;
   let isEmailVerified = false;

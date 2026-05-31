@@ -21,6 +21,8 @@ import toast from "react-hot-toast";
 import { useParams, useRouter, notFound } from "next/navigation"; // 🌟 Added notFound here
 import { routeParamSchema } from "@/lib/validations/auth"; // 🌟 Added your validation schema
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -410,7 +412,7 @@ export default function CourseDetailPage() {
                       if(!frontText.trim()||!backText.trim()){ toast.error("Both front and back are required"); return; }
                       try{
                         setSubmitting(true);
-                        const res = await fetch('/api/flashcards',{
+                        const res = await apiFetch('/api/flashcards',{
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ front: frontText, back: backText, origin: originText })
