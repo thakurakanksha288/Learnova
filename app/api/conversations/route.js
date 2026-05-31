@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { Groq } from "groq-sdk";
-import { authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { parseJSON } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage } from "@/utils/promptGuard";
 // 🎯 INTEGRATION: Import the localized action engine agent parser
 import { parseUserIntent } from "@/services/ai-agent/intentparser";
+import { requireAuth } from "@/lib/rbac";
+import { AppError } from "@/lib/errors";
 
 // Initialize the official Groq SDK client instance
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -39,23 +41,8 @@ function createStreamingResponse(dataPayload) {
 export async function POST(request) {
   try {
     // 1. Authentication Layer (With Automated Local Dev Safety Rails)
-    let userId = "dev-mock-user-id";
-    
-    try {
-      const decodedToken = await authenticateRequest(request);
-      if (decodedToken?.uid || decodedToken?.sub) {
-        userId = decodedToken.uid || decodedToken.sub;
-      }
-    } catch (authError) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[nova-auth-fallback] Local development fallback bypass activated.");
-      } else {
-        return new Response(JSON.stringify({ error: "Unauthorized access token validation failed." }), { 
-          status: 401, 
-          headers: { "Content-Type": "application/json" } 
-        });
-      }
-    }
+    const decodedToken = await requireAuth(request);
+    let userId = decodedToken.uid || decodedToken.sub;
 
     // 2. Rate Limiting Check
     try {
@@ -188,6 +175,13 @@ export async function POST(request) {
     });
 
   } catch (error) {
+    if (error instanceof AppError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: error.statusCode,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     console.error(`[nova-ai] Groq API initialization exception:`, error.message);
     return new Response(JSON.stringify({ error: error.message || "An error occurred in the streaming process pipeline." }), { 
       status: 500, 

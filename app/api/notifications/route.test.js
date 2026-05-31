@@ -1,5 +1,5 @@
 import { GET, PATCH } from "./route";
-import { authenticateRequest, parseJSON } from "../../../lib/error-handler";
+import { parseJSON } from "../../../lib/error-handler";
 import { checkRateLimit } from "../../../lib/rateLimit";
 import clientPromise from "../../../lib/mongodb";
 import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
@@ -7,7 +7,6 @@ import { assertApiError } from "../../../testUtils/assertApiError";
 
 vi.mock("../../../lib/error-handler", () => {
   return {
-    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
@@ -30,6 +29,10 @@ vi.mock("../../../lib/error-handler", () => {
     parseJSON: vi.fn(),
   };
 });
+
+vi.mock("../../../lib/rbac", () => ({
+  requireAuth: vi.fn(),
+}));
 
 vi.mock("../../../lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
@@ -85,7 +88,8 @@ describe("notifications route", () => {
 
   describe("GET notifications", () => {
     test("successfully retrieves notifications when requested for own account", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
 
       const mockNotifications = [
         { _id: "notif-1", userId: "user-123", message: "Notice posted", read: false },
@@ -105,7 +109,8 @@ describe("notifications route", () => {
     });
 
     test("returns empty list if userId query param is missing", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
 
       const response = await GET(createMockRequest("http://localhost/api/notifications"));
 
@@ -115,7 +120,8 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 403 Forbidden if trying to get notifications of another user", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
 
       const response = await GET(createMockRequest("http://localhost/api/notifications?userId=other-user-456"));
 
@@ -124,7 +130,8 @@ describe("notifications route", () => {
 
     test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
       const { UnauthorizedError } = require("../../../lib/errors");
-      authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await GET(createMockRequest("http://localhost/api/notifications?userId=user-123"));
 
@@ -132,7 +139,8 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 429 if rate limit is exceeded", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
       checkRateLimit.mockResolvedValue({ allowed: false });
 
       const response = await GET(createMockRequest("http://localhost/api/notifications?userId=user-123"));
@@ -143,7 +151,8 @@ describe("notifications route", () => {
 
   describe("PATCH notifications (mark read)", () => {
     test("successfully marks all notifications as read for own account", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
       parseJSON.mockResolvedValue({ userId: "user-123" });
 
       const response = await PATCH(createMockRequest());
@@ -158,7 +167,8 @@ describe("notifications route", () => {
     });
 
     test("returns success false if userId is missing from request body", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
       parseJSON.mockResolvedValue({});
 
       const response = await PATCH(createMockRequest());
@@ -168,7 +178,8 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 403 Forbidden if trying to mark read for another user", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "user-123" });
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
       parseJSON.mockResolvedValue({ userId: "other-user-456" });
 
       const response = await PATCH(createMockRequest());
@@ -178,7 +189,8 @@ describe("notifications route", () => {
 
     test("rejects request with 401 if unauthorized", async () => {
       const { UnauthorizedError } = require("../../../lib/errors");
-      authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await PATCH(createMockRequest());
       await assertApiError(response, 401, "Unauthorized");

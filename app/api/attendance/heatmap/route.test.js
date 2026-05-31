@@ -1,10 +1,13 @@
 import { GET } from "./route";
-import { authenticateRequest } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { getFirestore } from "firebase-admin/firestore";
 
 vi.mock("@/lib/error-handler", () => ({
-  authenticateRequest: vi.fn(),
   withErrorHandler: (handler) => handler,
+}));
+
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/rateLimit", () => ({
@@ -34,7 +37,7 @@ describe("attendance heatmap route", () => {
   });
 
   test("returns empty array if userId or month parameter is missing", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     const request = {
       url: "http://localhost:3000/api/attendance/heatmap?userId=user-123",
@@ -48,7 +51,7 @@ describe("attendance heatmap route", () => {
   });
 
   test("rejects query with 403 Forbidden if uid does not match authenticated user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     const request = {
       url: "http://localhost:3000/api/attendance/heatmap?userId=user-456&month=2026-05",
@@ -59,7 +62,7 @@ describe("attendance heatmap route", () => {
   });
 
   test("correctly fetches attendance records from Firestore with date range filter", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     const mockDocs = [
       {

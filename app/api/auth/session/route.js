@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { authenticateRequest, withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ function getAuthCookieOptions() {
 }
 
 export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
   const authorization = request.headers.get("authorization") || "";
   const bearerToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : null;
   const authToken = bearerToken || request.cookies.get("authToken")?.value || null;
@@ -34,7 +35,7 @@ export const POST = withErrorHandler(async (request) => {
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  await authenticateRequest(request);
+  await requireAuth(request);
 
   const response = NextResponse.json({ success: true });
   response.cookies.set("authToken", "", {

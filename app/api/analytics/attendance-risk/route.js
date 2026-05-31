@@ -1,5 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireRole } from "@/lib/rbac";
 import { connectDb } from "@/lib/mongodb";
 
 /**
@@ -18,25 +19,16 @@ import { connectDb } from "@/lib/mongodb";
  *  - good     : attendanceRate >= 80
  */
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const { payload: decodedToken, profile } = await requireRole(request, ["teacher", "institute", "admin"]);
 
   const db = await connectDb();
 
-  // Fetch the caller's profile to get their instituteId / role
-  const userDoc = await db
-    .collection("users")
-    .findOne({ uid: decodedToken.uid });
-
-  if (!userDoc) {
+  // Use the Firestore profile returned by the shared RBAC helper.
+  if (!profile) {
     return jsonError("User not found", 404);
   }
 
-  const allowedRoles = ["teacher", "institute", "admin"];
-  if (!allowedRoles.includes(userDoc.role)) {
-    return jsonError("Forbidden: insufficient role", 403);
-  }
-
-  const instituteId = userDoc.instituteId || userDoc.uid;
+  const instituteId = profile.instituteId || profile.uid;
 
   // Two-week window dates
   const now = new Date();

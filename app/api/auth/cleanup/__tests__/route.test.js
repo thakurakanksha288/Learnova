@@ -52,10 +52,13 @@ vi.mock("@/lib/error-handler", async () => {
         }
       };
     },
-    authenticateRequest: vi.fn(),
     parseJSON: vi.fn(),
   };
 });
+
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
+}));
 
 describe("POST /api/auth/cleanup", () => {
   beforeEach(() => {
@@ -63,10 +66,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("rejects unauthenticated requests with 401", async () => {
-    const { authenticateRequest } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
     const { UnauthorizedError } = await import("@/lib/errors");
 
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
     const request = {
       headers: {
@@ -82,9 +85,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("rejects requests where authenticated user tries to delete another user's account", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({ uid: "user-456" });
 
     const request = {
@@ -101,10 +105,11 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("allows authenticated user to delete their own orphaned account", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
     const { initializeFirebase } = await import("@/lib/firebase-admin");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({ uid: "user-123" });
     mockDeleteUser.mockResolvedValue();
 
@@ -124,9 +129,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("returns 400 for missing UID", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({});
 
     const request = {
@@ -143,9 +149,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("returns 400 for non-string UID", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({ uid: 12345 });
 
     const request = {
@@ -162,9 +169,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("returns success when user was already deleted", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({ uid: "user-123" });
 
     const notFoundError = new Error("User not found");
@@ -185,9 +193,10 @@ describe("POST /api/auth/cleanup", () => {
   });
 
   it("returns 500 on unexpected Firebase errors", async () => {
-    const { authenticateRequest, parseJSON } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
+    const { parseJSON } = await import("@/lib/error-handler");
 
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
+    requireAuth.mockResolvedValue({ uid: "user-123", email: "a@test.com" });
     parseJSON.mockResolvedValue({ uid: "user-123" });
     mockDeleteUser.mockRejectedValue(new Error("internal firebase error"));
 

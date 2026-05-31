@@ -1,13 +1,14 @@
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { requireAuth } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
