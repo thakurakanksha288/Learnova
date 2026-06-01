@@ -19,6 +19,24 @@ function getTodayKey() {
   return getTodayKeyLocal();
 }
 
+function unwrapApiData(payload) {
+  return payload?.success === true && payload?.data !== undefined
+    ? payload.data
+    : payload;
+}
+
+function getApiErrorMessage(payload, fallback) {
+  if (typeof payload?.error === "string") {
+    return payload.error;
+  }
+
+  if (payload?.error?.message) {
+    return payload.error.message;
+  }
+
+  return payload?.message || fallback;
+}
+
 /**
  * Checks whether a user has already recorded attendance for today.
  */
@@ -27,18 +45,23 @@ export async function hasCheckedInToday(userId) {
     return false;
   }
 
-  const today = getTodayKey();
+  try {
+    const today = getTodayKey();
 
-  const attendanceQuery = query(
-    collection(db, "attendance_records"),
-    where("userId", "==", userId),
-    where("date", "==", today),
-    limit(1)
-  );
+    const attendanceQuery = query(
+      collection(db, "attendance_records"),
+      where("userId", "==", userId),
+      where("date", "==", today),
+      limit(1)
+    );
 
-  const snapshot = await getDocs(attendanceQuery);
+    const snapshot = await getDocs(attendanceQuery);
 
-  return !snapshot.empty;
+    return !snapshot.empty;
+  } catch (error) {
+    console.error("Failed to check attendance:", error);
+    return false;
+  }
 }
 
 /**
@@ -114,12 +137,20 @@ export async function recordAttendance({
   });
 
   if (!response.ok) {
-    throw new Error(
-      "Failed to record attendance securely on the server."
-    );
+    let errorMessage =
+      "Failed to record attendance securely on the server.";
+
+    try {
+      const errorData = await response.json();
+      errorMessage = getApiErrorMessage(errorData, errorMessage);
+    } catch {
+    // Ignore invalid JSON responses
+    }
+
+    throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  const data = unwrapApiData(await response.json());
   const isAlreadyRecorded = !!(data && data.alreadyRecorded);
 
   const newRate = isAlreadyRecorded ? null : await recalculateAttendanceRate(userId);

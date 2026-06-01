@@ -1,10 +1,12 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
+import { executeSaga } from "@/lib/transactionCoordinator";
 
 import { withValidation } from "@/lib/validations/withValidation";
 import { setRoleSchema } from "@/lib/validations/auth";
@@ -12,10 +14,9 @@ import { setRoleSchema } from "@/lib/validations/auth";
 export const POST = withValidation(
   setRoleSchema,
   withErrorHandler(async (request, data) => {
-    const decodedToken = await authenticateRequest(request);
+    const decodedToken = await requireAuth(request);
 
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`set_role_${ip}_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`);
     if (!rateLimitResult.allowed) {
       throw new AppError("Too many attempts. Please try again later.", 429);
     }
@@ -48,22 +49,18 @@ export const POST = withValidation(
     if (existingProfile.exists) {
       const existingRole = existingProfile.data()?.role;
 
-      if (existingRole && existingRole !== role) {
+      if (existingRole) {
         return jsonError(
           `Forbidden: Account is already registered as "${existingRole}". Role cannot be changed.`,
           403
         );
       }
-    } else if (decodedToken.role && decodedToken.role !== role) {
+    } else if (decodedToken.role) {
       return jsonError(
         `Forbidden: Token already carries role "${decodedToken.role}". Role cannot be changed.`,
         403
       );
     }
-
-    await admin.auth().setCustomUserClaims(decodedToken.uid, {
-      role,
-    });
 
     const userProfile = {
       uid: decodedToken.uid,
@@ -79,46 +76,82 @@ export const POST = withValidation(
       userProfile.instituteName = instituteName;
     }
 
-    await db
-      .collection("users")
-      .doc(decodedToken.uid)
-      .set(userProfile, { merge: true });
-
-    // Sync user to MongoDB so gamification (awardXp) and biometric labels
-    // endpoints can locate the student by their Firebase UID.
-    try {
-      const mongoDB = await connectDb();
-      const now = new Date().toISOString();
-
-      await mongoDB.collection("users").updateOne(
-        { firebaseUid: decodedToken.uid },
+    const sagaResult = await executeSaga({
+      operationType: "set_role",
+      uid: decodedToken.uid,
+      steps: [
         {
-          $set: {
-            firebaseUid: decodedToken.uid,
-            email: decodedToken.email,
-            name: fullName,
-            fullName,
-            role,
-            lastLogin: now,
+          name: "set_auth_claims",
+          execute: async () => {
+            await admin.auth().setCustomUserClaims(decodedToken.uid, { role });
           },
-          $setOnInsert: {
-            totalXp: 0,
-            currentLevel: 1,
-            xpToNextLevel: 100,
-            currentStreak: 0,
-            unlockedBadges: [],
-            attendanceHistory: [],
-            createdAt: now,
+          compensate: async () => {
+            await admin.auth().setCustomUserClaims(decodedToken.uid, {});
           },
         },
-        { upsert: true }
+        {
+          name: "write_firestore",
+          execute: async () => {
+            await db
+              .collection("users")
+              .doc(decodedToken.uid)
+              .set(userProfile, { merge: true });
+          },
+          compensate: async () => {
+            await db.collection("users").doc(decodedToken.uid).delete();
+          },
+        },
+        {
+          name: "write_mongodb",
+          execute: async () => {
+            const mongoDB = await connectDb();
+            const now = new Date().toISOString();
+            await mongoDB.collection("users").updateOne(
+              { firebaseUid: decodedToken.uid },
+              {
+                $set: {
+                  firebaseUid: decodedToken.uid,
+                  email: decodedToken.email,
+                  name: fullName,
+                  fullName,
+                  role,
+                  lastLogin: now,
+                },
+                $setOnInsert: {
+                  totalXp: 0,
+                  currentLevel: 1,
+                  xpToNextLevel: 100,
+                  currentStreak: 0,
+                  unlockedBadges: [],
+                  attendanceHistory: [],
+                  createdAt: now,
+                },
+              },
+              { upsert: true }
+            );
+          },
+          compensate: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("users").deleteOne({ firebaseUid: decodedToken.uid });
+          },
+        },
+      ],
+    });
+
+    if (!sagaResult.success) {
+      if (sagaResult.fullyCompensated) {
+        return jsonError(
+          "Account setup failed due to a server error. All changes have been rolled back. Please try again.",
+          500
+        );
+      }
+      return jsonError(
+        "Account setup failed and some changes could not be rolled back. Please contact support for manual reconciliation.",
+        500
       );
-    } catch (mongoErr) {
-      // MongoDB sync is non-blocking — Firestore is the primary store.
-      // Log the error but do not fail the registration flow.
-      console.error("[set-role] MongoDB user sync failed:", mongoErr.message);
     }
 
     return jsonSuccess({ userProfile }, 201);
-  })
+  }),
+  { maxBytes: 1024 * 10 }
 );

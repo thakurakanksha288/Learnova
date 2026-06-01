@@ -10,7 +10,9 @@ export function NotificationProvider({ children }) {
   const timersRef = useRef(new Map());
 
   const addNotification = (notification) => {
-    const id = Date.now();
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `notif_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
 
     const newNotification = {
       id,

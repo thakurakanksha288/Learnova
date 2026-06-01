@@ -7,7 +7,10 @@ import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
+import { executeSaga } from "@/lib/transactionCoordinator";
+import { connectDb } from "@/lib/mongodb";
 import { z } from "zod";
+
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +25,7 @@ const syncSchema = z.object({
       queuedAt: z.number(),
       date: z.string().optional(),
     })
-  ).min(1),
+  ).min(1).max(100, "Too many records in a single sync batch"),
 });
 
 // Minimum face-match confidence required to record attendance.
@@ -107,6 +110,9 @@ async function handleSync(request) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
       console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
@@ -136,64 +142,89 @@ async function handleSync(request) {
       console.warn(
         `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`,
       );
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
-    // Atomic check-and-set using a Firestore transaction to prevent
-    // duplicate records under concurrent sync requests from multiple tabs or devices.
-    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+    // Use saga to atomically write attendance + award XP.
+    // If XP awarding fails, attendance is still recorded (it's the primary write),
+    // but the saga tracks the failure for reconciliation.
+    const sagaResult = await executeSaga({
+      operationType: "attendance_sync",
+      uid: decodedToken.uid,
+      steps: [
+        {
+          name: "write_attendance",
+          execute: async () => {
+            const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+            await db.runTransaction(async (transaction) => {
+              const existingAttendance = await transaction.get(newDocRef);
+              if (existingAttendance.exists) {
+                // Already recorded — skip write but don't throw (idempotent)
+                return;
+              }
 
-    // Wrap each transaction individually so a single Firestore failure
-    // (write lock, network blip) does not crash the entire batch.
-    // Only successfully written records are acknowledged to the client.
-    try {
-      await db.runTransaction(async (transaction) => {
-        const existingAttendance = await transaction.get(newDocRef);
-        if (existingAttendance.exists) {
-          return;
-        }
-
-        if (
-          (record.studentName && record.studentName !== serverIdentity.studentName) ||
-          (record.email && record.email !== serverIdentity.email)
-        ) {
-          console.warn(
-            `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-          );
-        }
-
-        transaction.set(newDocRef, {
-          userId: decodedToken.uid,
-          studentName: serverIdentity.studentName,
-          email: serverIdentity.email,
-          instituteId,
-          timestamp: FieldValue.serverTimestamp(),
-          date: recordDate,
-          status: "present",
-          confidenceScore: normalizedConfidence,
-          offlineSynced: true,
-          queuedAt: new Date(record.queuedAt),
-        });
-      });
-    } catch (txnError) {
-      console.error(
-        `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
-        txnError.message,
-      );
-      // Skip this record — do NOT acknowledge it so the client retries later
-      continue;
-    }
+              transaction.set(newDocRef, {
+                userId: decodedToken.uid,
+                studentName: serverIdentity.studentName,
+                email: serverIdentity.email,
+                instituteId,
+                timestamp: FieldValue.serverTimestamp(),
+                date: recordDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: true,
+                queuedAt: new Date(record.queuedAt),
+              });
+            });
+          },
+          compensate: null, // Attendance writes are append-only; no rollback needed
+        },
+        {
+          name: "write_mongodb_attendance",
+          execute: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("attendance").updateOne(
+              { userId: decodedToken.uid, date: recordDate },
+              {
+                $set: {
+                  userId: decodedToken.uid,
+                  studentName: serverIdentity.studentName,
+                  email: serverIdentity.email,
+                  instituteId,
+                  timestamp: new Date(record.queuedAt),
+                  date: recordDate,
+                  status: "present",
+                  confidenceScore: normalizedConfidence,
+                  offlineSynced: true,
+                  queuedAt: new Date(record.queuedAt),
+                },
+              },
+              { upsert: true }
+            );
+          },
+          compensate: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("attendance").deleteOne({ userId: decodedToken.uid, date: recordDate });
+          },
+        },
+        {
+          name: "award_xp",
+          execute: async () => {
+            await awardXp(decodedToken.uid, "attendance_marked", {
+              attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
+            });
+          },
+          compensate: null, // XP is a side-effect; failure doesn't block attendance
+        },
+      ],
+    });
 
     successfulIds.push(record.id);
-    processedUserDates.add(userDateKey);
 
-    try {
-      await awardXp(decodedToken.uid, "attendance_marked", {
-        attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
-      });
-    } catch (error) {
-      console.error(`Failed to award XP for offline-synced record (${decodedToken.uid}_${recordDate}):`, error);
-    }
+    processedUserDates.add(userDateKey);
   }
 
   return NextResponse.json({

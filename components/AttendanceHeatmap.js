@@ -48,7 +48,7 @@ export default function AttendanceHeatmap() {
     try {
       const token = await user.getIdToken();
       const res = await fetch(
-        `/api/attendance/heatmap?userId=${user.uid}&month=${monthKey}`,
+        `/api/attendance/heatmap?month=${monthKey}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
