@@ -20,9 +20,7 @@ jobs:
           cache: 'npm'
 
       - name: 📚 Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm ci
 
       - name: 🔍 Check for secrets in files
         run: echo "✅ Using GitHub's native secret scanning"
