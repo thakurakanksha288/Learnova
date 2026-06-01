@@ -80,7 +80,7 @@ export const POST = withErrorHandler(async (request) => {
       faceDescriptor,
     });
   } catch (error) {
-    await del(blobUrl).catch(() => {});
+    await Promise.resolve(del(blobUrl)).catch(() => {});
     throw error;
   }
 
