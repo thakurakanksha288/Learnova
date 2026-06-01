@@ -192,67 +192,60 @@ export async function GET(request) {
     const emailsToSend = [];
 
     for (const settings of allSettings) {
-      const threshold = settings.institute?.lowAttendanceThreshold || 75;
-      const instituteId = settings.userId || settings.instituteId || null;
+      const threshold = settings.institute.lowAttendanceThreshold || 75;
 
-      const students = await db
-        .collection("users")
-        .find({
-          role: "student",
-          ...(instituteId ? { instituteId } : {}),
-        })
-        .toArray();
+      // Fetch all students from MongoDB
+      const students = await db.collection('users').find({ role: 'student' }).toArray();
 
-      const studentsWithUid = students
-        .map((student) => ({ ...student, uid: getStudentUid(student) }))
-        .filter((student) => Boolean(student.uid));
+      for (const student of students) {
+        const studentUid = student.firebaseUid;
+        if (!studentUid) continue;
 
-      if (studentsWithUid.length === 0) {
-        continue;
-      }
-
-      const studentIds = studentsWithUid.map((student) => student.uid);
-      const warnedUserIds = await getRecentWarningUserIds(
-        db,
-        studentIds,
-        cooldownDate
-      );
-      const studentsToCheck = studentsWithUid.filter(
-        (student) => !warnedUserIds.has(student.uid)
-      );
-
-      if (studentsToCheck.length === 0) {
-        continue;
-      }
-
-      const attendanceIds = studentsToCheck.map((student) => student.uid);
-      const attendanceByUser =
-        (await loadMongoAttendanceByUser(db, instituteId, attendanceIds)) ||
-        (await loadFirestoreAttendanceByUser(firestore, attendanceIds));
-
-      for (const student of studentsToCheck) {
-        const evaluation = evaluateStudentAttendance(
-          attendanceByUser.get(student.uid) || [],
-          threshold
-        );
+        // Check recent warning logs to prevent spam
+        const recentLog = await db.collection('warning_logs').findOne({
+          userId: studentUid,
+          createdAt: { $gte: cooldownDate }
+        });
 
         if (!evaluation.isBelowThreshold) {
           continue;
         }
 
-        const { notification, warningLog, emailData } = buildWarningPayload({
-          uid: student.uid,
-          email: student.email,
-          name: student.fullName || student.name,
-          evaluation,
-          threshold,
-          now,
-        });
+        // Fetch attendance records from Firestore attendance_records collection
+        const attendanceSnapshot = await firestore
+          .collection('attendance_records')
+          .where('userId', '==', studentUid)
+          .get();
 
-        notificationsToInsert.push(notification);
-        warningLogsToInsert.push(warningLog);
-        if (emailData) {
-          emailsToSend.push(emailData);
+        const studentAttendance = attendanceSnapshot.docs.map(doc => doc.data());
+
+        const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+
+        if (evaluation.isBelowThreshold) {
+          notificationsToInsert.push({
+            userId: studentUid,
+            title: 'Low Attendance Warning',
+            message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
+            type: 'warning',
+            read: false,
+            createdAt: now,
+          });
+
+          warningLogsToInsert.push({
+            userId: studentUid,
+            percentage: evaluation.percentage,
+            threshold,
+            createdAt: now,
+          });
+
+          if (student.email) {
+            emailsToSend.push({
+              to_email: student.email,
+              to_name: student.fullName || student.name || 'Student',
+              attendance_percentage: evaluation.percentage,
+              threshold,
+            });
+          }
         }
       }
     }
