@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
 import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/apiClient";
 import {
   AlertCircle,
   MapPin,
@@ -152,7 +153,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/settings", {
+      const response = await apiFetch("/api/attendance/settings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -209,7 +210,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
   // Live countdown timer for the attendance window
   useEffect(() => {
-    if (!settings?.timeWindow) return;
+    if (!settings?.timeWindow) {
+      return undefined;
+    }
 
     const updateTimer = () => {
       const { start, end } = settings.timeWindow;
@@ -256,8 +259,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     updateTimer(); // run immediately
     const intervalId = setInterval(updateTimer, 1000); // update every second
 
-    return () => clearInterval(intervalId);
-  }, [settings]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [settings?.timeWindow, settings?.gpsLocation]);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
@@ -375,7 +382,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     setPasscodeError("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/validate-passcode", {
+      const response = await apiFetch("/api/attendance/validate-passcode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -487,7 +494,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
       };
 
-      const response = await fetch("/api/exceptions/create", {
+      const response = await apiFetch("/api/exceptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -814,8 +821,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
             }}
             placeholder="• • • • • •"
             className="w-full bg-white/5 border-2 border-white/20 rounded-2xl px-8 py-6 text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/50 focus:border-purple-500 text-center text-3xl tracking-[0.5em] font-bold transition-all duration-300"
-            maxLength={8}
-            onKeyPress={(e) => e.key === "Enter" && validatePasscode()}
+            required
+            minLength={8}
+            maxLength={128}
+            onKeyDown={(e) => e.key === "Enter" && validatePasscode()}
           />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 pointer-events-none"></div>
         </div>

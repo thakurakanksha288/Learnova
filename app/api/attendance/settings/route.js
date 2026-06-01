@@ -23,15 +23,26 @@ const postSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  await requireAuth(request);
+  const { profile } = await requireRole(request, ["teacher", "admin"]);
 
   initializeFirebase();
 
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
-  const settingsDoc = await db
+  let settingsDoc = await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .get();
+
+  if (!settingsDoc.exists) {
+    // Fallback for existing data
+    settingsDoc = await db
+      .collection("attendance_settings")
+      .doc("current_settings")
+      .get();
+  }
 
   if (!settingsDoc.exists) {
     return NextResponse.json(
@@ -69,10 +80,13 @@ export const POST = withErrorHandler(async (request) => {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
 
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
   await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .set(
       {
         passcode: hashPasscode(passcode),
@@ -99,10 +113,13 @@ export const DELETE = withErrorHandler(async (request) => {
   }
   initializeFirebase();
 
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
   await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .update({
       active: false,
       passcode: admin.firestore.FieldValue.delete(),

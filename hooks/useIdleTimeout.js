@@ -7,6 +7,8 @@ const WARNING_BEFORE = 2 * 60 * 1000;
 
 export function useIdleTimeout() {
   const { signOut } = useAuth();
+  const signOutRef = useRef(signOut);
+  useEffect(() => { signOutRef.current = signOut; }, [signOut]);
   const logoutTimer = useRef(null);
   const warningTimer = useRef(null);
   const warningToastId = useRef(null);
@@ -34,7 +36,7 @@ export function useIdleTimeout() {
 
     logoutTimer.current = setTimeout(async () => {
       toast.dismiss(warningToastId.current);
-      await signOut();
+      await signOutRef.current();
     }, IDLE_TIMEOUT);
   };
 

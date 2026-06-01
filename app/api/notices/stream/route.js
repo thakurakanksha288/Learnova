@@ -2,6 +2,7 @@ import { authenticateRequest } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDbForSSE } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { Redis } from "@upstash/redis";
 
 export const dynamic = "force-dynamic";
 
@@ -9,146 +10,115 @@ const MAX_PER_USER = 3;
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 15000;
 const POLL_INTERVAL_MS = 10000;
-const STREAM_RECONNECT_BASE_MS = 1000;
-const STREAM_RECONNECT_MAX_MS = 30000;
+const NOTICE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
-// ── Connection Registry ────────────────────────────────────────────────────────
-const connections = new Map();
-const userConnectionCount = new Map();
-let nextConnId = 1;
+// ── Redis Client ─────────────────────────────────────────────────────────────
+let redisClient;
 
-function registerConnection(userId) {
-  const current = userConnectionCount.get(userId) || 0;
-  if (current >= MAX_PER_USER) return null;
-  const connId = nextConnId++;
-  connections.set(connId, userId);
-  userConnectionCount.set(userId, current + 1);
-  return connId;
+function getRedis() {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  if (!redisClient) {
+    redisClient = new Redis({ url, token });
+  }
+  return redisClient;
 }
 
-function unregisterConnection(connId) {
-  const userId = connections.get(connId);
-  if (!userId) return;
-  connections.delete(connId);
-  const count = userConnectionCount.get(userId) || 0;
-  if (count <= 1) {
-    userConnectionCount.delete(userId);
+// ── Redis Keys ───────────────────────────────────────────────────────────────
+const redisKeys = {
+  connectionCount: (userId) => `sse:conn:${userId}`,
+  recentNotices: () => "sse:notices:recent",
+};
+
+// ── In-memory connection fallback (used when Redis is unavailable) ────────────
+const memoryConnections = new Map();
+
+function getMemoryConnectionCount(userId) {
+  return memoryConnections.get(userId) || 0;
+}
+
+function incrementMemoryConnection(userId) {
+  const count = getMemoryConnectionCount(userId) + 1;
+  memoryConnections.set(userId, count);
+  return count;
+}
+
+function decrementMemoryConnection(userId) {
+  const count = Math.max(0, getMemoryConnectionCount(userId) - 1);
+  if (count === 0) {
+    memoryConnections.delete(userId);
   } else {
-    userConnectionCount.set(userId, count - 1);
+    memoryConnections.set(userId, count);
   }
+  return count;
 }
 
-// ── Shared Notice Listener Bus ─────────────────────────────────────────────────
-const noticeListeners = new Map();
-
-function addNoticeListener(userId, cb) {
-  if (!noticeListeners.has(userId)) {
-    noticeListeners.set(userId, new Set());
-  }
-  noticeListeners.get(userId).add(cb);
-}
-
-function removeNoticeListener(userId, cb) {
-  const cbs = noticeListeners.get(userId);
-  if (!cbs) return;
-  cbs.delete(cb);
-  if (cbs.size === 0) noticeListeners.delete(userId);
-}
-
-function broadcastNotice(doc) {
-  for (const [, cbs] of noticeListeners) {
-    for (const cb of cbs) cb(doc);
-  }
-}
-
-// ── MongoDB Change Stream (single per process, auto-reconnect) ─────────────────
-let sharedStream = null;
-let sharedDb = null;
-let streamReconnectTimer = null;
-let streamReconnectRetryCount = 0;
-
-async function startChangeStream() {
-  stopChangeStream();
-  try {
-    sharedDb = await connectDbForSSE();
-    const coll = sharedDb.collection("notices");
-    sharedStream = coll.watch([{ $match: { operationType: "insert" } }]);
-    sharedStream.on("change", (change) => {
-      const doc = change.fullDocument;
-      if (doc) broadcastNotice(doc);
-    });
-    sharedStream.on("error", () => scheduleChangeStreamReconnect());
-    sharedStream.on("close", () => scheduleChangeStreamReconnect());
-    streamReconnectRetryCount = 0;
-  } catch {
-    scheduleChangeStreamReconnect();
-  }
-}
-
-function stopChangeStream() {
-  if (streamReconnectTimer) {
-    clearTimeout(streamReconnectTimer);
-    streamReconnectTimer = null;
-  }
-  if (sharedStream) {
-    try { sharedStream.close(); } catch {}
-    sharedStream = null;
-  }
-  sharedDb = null;
-}
-
-function scheduleChangeStreamReconnect() {
-  const delay = Math.min(
-    STREAM_RECONNECT_BASE_MS * Math.pow(2, streamReconnectRetryCount),
-    STREAM_RECONNECT_MAX_MS
-  );
-  streamReconnectRetryCount++;
-  streamReconnectTimer = setTimeout(() => {
-    streamReconnectTimer = null;
-    startChangeStream();
-  }, delay);
-}
-
-// ── Shared Polling Fallback ────────────────────────────────────────────────────
-let pollingInterval = null;
-let pollingLastCheck = new Date();
-
-function startPollingIfNeeded() {
-  if (pollingInterval || noticeListeners.size === 0) return;
-  pollingInterval = setInterval(async () => {
-    if (noticeListeners.size === 0) {
-      stopPolling();
-      return;
+// ── Connection Registry (Redis-backed with in-memory fallback) ────────────────
+async function registerConnection(userId) {
+  const redis = getRedis();
+  if (!redis) {
+    // Fallback: use in-memory connection tracking with the same limit
+    const count = incrementMemoryConnection(userId);
+    if (count > MAX_PER_USER) {
+      decrementMemoryConnection(userId);
+      return { connId: null, allowed: false };
     }
-    try {
-      if (!sharedDb) sharedDb = await connectDbForSSE();
-      const newNotices = await sharedDb
-        .collection("notices")
-        .find({ createdAt: { $gt: pollingLastCheck } })
-        .toArray();
-      if (newNotices.length > 0) {
-        pollingLastCheck = new Date();
-        newNotices.forEach((n) => broadcastNotice(n));
-      }
-    } catch {}
-  }, POLL_INTERVAL_MS);
+    const connId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    return { connId, allowed: true };
+  }
+
+  const key = redisKeys.connectionCount(userId);
+  const count = await redis.incr(key);
+  if (count === 1) {
+    await redis.expire(key, Math.ceil(IDLE_TIMEOUT_MS / 1000));
+  }
+
+  if (count > MAX_PER_USER) {
+    await redis.decr(key);
+    return { connId: null, allowed: false };
+  }
+
+  const connId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  return { connId, allowed: true };
 }
 
-function stopPolling() {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
-    pollingInterval = null;
+async function unregisterConnection(userId) {
+  const redis = getRedis();
+  if (!redis) {
+    decrementMemoryConnection(userId);
+    return;
+  }
+  const key = redisKeys.connectionCount(userId);
+  const newCount = await redis.decr(key);
+  if (newCount < 0) {
+    await redis.set(key, 0, { ex: Math.ceil(IDLE_TIMEOUT_MS / 1000) });
   }
 }
 
-// ── Request Handler ────────────────────────────────────────────────────────────
+// ── Notice Publishing (Redis-backed) ─────────────────────────────────────────
+export async function publishNoticeToRedis(doc) {
+  const redis = getRedis();
+  if (!redis) return;
+  const key = redisKeys.recentNotices();
+  const score = Date.now();
+  const member = JSON.stringify({
+    ...doc,
+    _id: doc._id?.toString?.() || doc.id,
+    id: doc._id?.toString?.() || doc.id,
+  });
+  await redis.zadd(key, { score, member });
+  await redis.expire(key, NOTICE_TTL_SECONDS);
+}
 
+// ── Request Handler ──────────────────────────────────────────────────────────
 export async function GET(request) {
   try {
     const decodedToken = await authenticateRequest(request);
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
     const userId = decodedToken.uid;
+    const instituteId = profile?.instituteId || profile?.uid;
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(`notices_stream_${ip}_${userId}`);
@@ -162,6 +132,7 @@ export async function GET(request) {
     let isConnected = true;
     let heartbeatTimer;
     let idleTimer;
+    let pollInterval;
     let connId;
 
     const stream = new ReadableStream({
@@ -180,41 +151,42 @@ export async function GET(request) {
           }
         };
 
-        const cleanup = () => {
+        const cleanup = async () => {
           if (!isConnected) return;
           isConnected = false;
           clearInterval(heartbeatTimer);
+          clearInterval(pollInterval);
           if (idleTimer) clearTimeout(idleTimer);
           if (connId) {
-            unregisterConnection(connId);
+            await unregisterConnection(userId);
             connId = null;
-          }
-          removeNoticeListener(userId, onNotice);
-          if (noticeListeners.size === 0) {
-            stopChangeStream();
-            stopPolling();
           }
           try { controller.close(); } catch {}
         };
 
-        connId = registerConnection(userId);
-        if (connId === null) {
+        const { connId: newConnId, allowed } = await registerConnection(userId);
+        connId = newConnId;
+        if (!allowed) {
           sendEvent("error", {
             message:
               "Too many connections. Close other tabs and try again.",
           });
-          cleanup();
+          await cleanup();
           return;
         }
 
-        request.signal.addEventListener("abort", cleanup);
+        request.signal.addEventListener("abort", () => cleanup());
 
-        const db = await connectDbForSSE();
-        const noticesCollection = db.collection("notices");
-
+        // Fetch initial notices from MongoDB
+        let lastNoticeTime = new Date();
         try {
+          const db = await connectDbForSSE();
+          const noticesCollection = db.collection("notices");
           const initialNotices = await noticesCollection
-            .find({ targetAudience: userRole })
+            .find({
+              targetAudience: userRole,
+              instituteId: instituteId,
+            })
             .sort({ isPinned: -1, createdAt: -1 })
             .limit(50)
             .toArray();
@@ -223,32 +195,77 @@ export async function GET(request) {
             id: n._id.toString(),
           }));
           sendEvent("initial", formattedNotices);
+          if (initialNotices.length > 0) {
+            lastNoticeTime = initialNotices[0].createdAt || new Date();
+          }
         } catch (err) {
           console.error("Initial fetch error:", err);
           sendEvent("error", { message: "Failed to fetch initial notices" });
-          cleanup();
+          await cleanup();
           return;
         }
 
-        const onNotice = (doc) => {
+        // Poll for new notices from Redis (fallback to MongoDB when Redis is unavailable)
+        const pollForNotices = async () => {
           if (!isConnected) return;
-          if (
-            doc.targetAudience &&
-            doc.targetAudience.includes(userRole)
-          ) {
-            sendEvent("new-notice", {
-              ...doc,
-              id: doc._id.toString(),
-            });
-          }
+          try {
+            const redis = getRedis();
+            if (redis) {
+              const key = redisKeys.recentNotices();
+              const lastScore = lastNoticeTime.getTime();
+              const members = await redis.zrange(key, lastScore, "+inf", {
+                byScore: true,
+                rev: false,
+              });
+              for (const member of members) {
+                if (!isConnected) break;
+                try {
+                  const doc = typeof member === "string" ? JSON.parse(member) : member;
+                  if (
+                    doc.targetAudience &&
+                    doc.targetAudience.includes(userRole) &&
+                    String(doc.instituteId) === String(instituteId)
+                  ) {
+                    sendEvent("new-notice", {
+                      ...doc,
+                      id: doc._id || doc.id,
+                    });
+                  }
+                  const memberTime = new Date(doc.createdAt).getTime();
+                  if (memberTime > lastNoticeTime.getTime()) {
+                    lastNoticeTime = new Date(doc.createdAt);
+                  }
+                } catch {}
+              }
+            } else {
+              // Fallback: poll MongoDB directly
+              const db = await connectDbForSSE();
+              const noticesCollection = db.collection("notices");
+              const newNotices = await noticesCollection
+                .find({
+                  targetAudience: userRole,
+                  instituteId: instituteId,
+                  createdAt: { $gt: lastNoticeTime },
+                })
+                .sort({ createdAt: -1 })
+                .limit(20)
+                .toArray();
+              for (const doc of newNotices) {
+                if (!isConnected) break;
+                sendEvent("new-notice", {
+                  ...doc,
+                  id: doc._id.toString(),
+                });
+                const docTime = new Date(doc.createdAt).getTime();
+                if (docTime > lastNoticeTime.getTime()) {
+                  lastNoticeTime = new Date(doc.createdAt);
+                }
+              }
+            }
+          } catch {}
         };
 
-        addNoticeListener(userId, onNotice);
-
-        if (!sharedStream) {
-          startChangeStream();
-        }
-        startPollingIfNeeded();
+        pollInterval = setInterval(pollForNotices, POLL_INTERVAL_MS);
 
         const resetIdle = () => {
           if (idleTimer) clearTimeout(idleTimer);
@@ -258,6 +275,7 @@ export async function GET(request) {
 
         heartbeatTimer = setInterval(() => {
           sendEvent("ping", { time: new Date().toISOString() });
+          resetIdle();
         }, HEARTBEAT_INTERVAL_MS);
 
       },
