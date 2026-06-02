@@ -37,14 +37,14 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("Forbidden: Cannot submit attendance for another user", 403);
   }
 
-  // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
+  // 3. Ensure they actually matched the face threshold (0.60 is the minimum configured in the frontend)
   const parsedConfidence = Number(confidenceScore);
-  if (parsedConfidence < 60) {
+  if (parsedConfidence < 0.6) {
     return jsonError("Bad Request: Confidence score too low", 400);
   }
 
-  // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
-  const normalizedConfidence = parsedConfidence / 100;
+  // Confidence score is already normalized to 0-1 range by the validation schema
+  const normalizedConfidence = parsedConfidence;
 
   // 4. Write attendance to Firestore (single source of truth).
   // Use a deterministic doc id and a transaction to prevent duplicates and match client duplicate checks.
