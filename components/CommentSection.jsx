@@ -8,15 +8,10 @@ import {
   normalizeStoredComments,
 } from "@/lib/commentStorage";
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
 
-// REMOVE db AND useAuth IMPORTS FOR NOW TO PREVENT CRASHES
 const CommentSection = ({ noticeId }) => {
-  // 1. FAKE USER BYPASS: This pretends you are logged in as a Teacher or Student
-  const mockUser = {
-    uid: "mock_user_123",
-    displayName: "Prem Shaw",
-    role: "Contributor" // Displays a premium-looking badge next to your name
-  };
+  const { user } = useAuth();
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -56,8 +51,8 @@ const CommentSection = ({ noticeId }) => {
 
     const freshComment = {
       id: `comment_${Date.now()}`,
-      userName: mockUser.displayName,
-      userRole: mockUser.role,
+      userName: user?.displayName || "Anonymous",
+      userRole: user?.role || "Member",
       text: newComment.trim(),
     };
 
@@ -138,7 +133,7 @@ const CommentSection = ({ noticeId }) => {
         />
         <button
           type="submit"
-          disabled={!newComment.trim()}
+          disabled={!newComment.trim() || !user}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-indigo-500 p-1.5 text-white transition hover:bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500"
         >
           <Send className="h-3.5 w-3.5" />

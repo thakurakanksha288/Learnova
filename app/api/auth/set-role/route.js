@@ -104,31 +104,46 @@ export const POST = withValidation(
         {
           name: "write_mongodb",
           execute: async () => {
-            const mongoDB = await connectDb();
-            const now = new Date().toISOString();
-            await mongoDB.collection("users").updateOne(
-              { firebaseUid: decodedToken.uid },
-              {
-                $set: {
-                  firebaseUid: decodedToken.uid,
-                  email: decodedToken.email,
-                  name: fullName,
-                  fullName,
-                  role,
-                  lastLogin: now,
-                },
-                $setOnInsert: {
-                  totalXp: 0,
-                  currentLevel: 1,
-                  xpToNextLevel: 100,
-                  currentStreak: 0,
-                  unlockedBadges: [],
-                  attendanceHistory: [],
-                  createdAt: now,
-                },
-              },
-              { upsert: true }
-            );
+            const MAX_RETRIES = 3;
+            const BASE_DELAY = 500;
+            let lastError;
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+              try {
+                const mongoDB = await connectDb();
+                const now = new Date().toISOString();
+                await mongoDB.collection("users").updateOne(
+                  { firebaseUid: decodedToken.uid },
+                  {
+                    $set: {
+                      firebaseUid: decodedToken.uid,
+                      email: decodedToken.email,
+                      name: fullName,
+                      fullName,
+                      role,
+                      lastLogin: now,
+                    },
+                    $setOnInsert: {
+                      totalXp: 0,
+                      currentLevel: 1,
+                      xpToNextLevel: 100,
+                      currentStreak: 0,
+                      unlockedBadges: [],
+                      attendanceHistory: [],
+                      createdAt: now,
+                    },
+                  },
+                  { upsert: true }
+                );
+                return;
+              } catch (err) {
+                lastError = err;
+                if (attempt < MAX_RETRIES) {
+                  const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+                  await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+              }
+            }
+            throw lastError;
           },
           compensate: async () => {
             const mongoDB = await connectDb();

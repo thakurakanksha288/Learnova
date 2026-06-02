@@ -23,6 +23,7 @@ import {
   getSavedCourses,
   sanitizeSavedCourseIds,
 } from "@/lib/courses";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 
 const getDifficultyVariant = (difficulty) => {
@@ -52,6 +53,7 @@ export default function CourseLibrary({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [savedCourseIds, setSavedCourseIds] = useState([]);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const isMounted = useIsMounted();
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
   useEffect(() => {
@@ -78,16 +80,18 @@ export default function CourseLibrary({
       );
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && isMounted()) {
         setCourses((prev) => [...prev, ...data.courses]);
         setPage(nextPage);
         setHasMore(data.hasMore);
       }
     } catch (error) {
       console.error("Failed to load more courses:", error);
-      toast.error("Failed to load more courses. Please check your connection.");
+      if (isMounted()) {
+        toast.error("Failed to load more courses. Please check your connection.");
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted()) setIsLoading(false);
     }
   };
 

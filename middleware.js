@@ -429,6 +429,7 @@ export async function middleware(request) {
     { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
     { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
     { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
+    { prefix: "/parent", apiPrefix: "/api/parent", role: "parent", defaultPath: "/parent/dashboard" },
   ];
 
   const matchedDashboard = protectedDashboards.find((dashboard) =>
