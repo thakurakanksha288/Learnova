@@ -62,10 +62,28 @@ vi.mock('@/lib/errors', () => {
   };
 });
 
+// Mock MongoDB connectDb used by the route and transactionCoordinator
+vi.mock('@/lib/mongodb', () => ({
+  connectDb: vi.fn(async () => ({
+    collection: vi.fn(() => ({
+      updateOne: vi.fn().mockResolvedValue({ upsertedCount: 1 }),
+      insertOne: vi.fn().mockResolvedValue({ insertedId: 'mock-id' }),
+      deleteOne: vi.fn().mockResolvedValue({ deletedCount: 1 }),
+      findOne: vi.fn().mockResolvedValue(null),
+    })),
+  })),
+}));
+
+// Mock rbac requireAuth to delegate to authenticateRequest mock
+vi.mock('@/lib/rbac', () => ({
+  requireAuth: vi.fn(),
+}));
+
 import { authenticateRequest, parseJSON } from '@/lib/error-handler';
 import { getUserProfile } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { requireAuth } from '@/lib/rbac';
 import { POST } from '@/app/api/attendance/record/route';
 
 function makeRequest(overrides = {}) {
@@ -92,6 +110,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true });
+    // Wire requireAuth to delegate to the authenticateRequest spy
+    requireAuth.mockImplementation(async (request) => authenticateRequest(request));
   });
 
   it('returns 403 when userId does not match authenticated uid', async () => {
