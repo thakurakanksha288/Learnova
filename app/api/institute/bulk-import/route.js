@@ -119,6 +119,11 @@ export async function POST(req) {
       }
     }
 
+    // Set Firebase custom claims for all created auth users
+    await Promise.all(createdAuthUids.map(uid =>
+      admin.auth().setCustomUserClaims(uid, { role: 'student' })
+    ));
+
     // Batch phase 4: Bulk Firestore writes
     const BATCH_LIMIT = 500;
     let firestoreBatch = firestore.batch();
