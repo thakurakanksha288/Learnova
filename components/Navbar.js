@@ -232,6 +232,8 @@ export function Navbar() {
         return "/institute/dashboard";
       case "admin":
         return "/admin/dashboard";
+      case "parent":
+        return "/parent/dashboard";
       default:
         return "/profile";
     }

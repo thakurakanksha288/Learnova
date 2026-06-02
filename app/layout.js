@@ -158,7 +158,7 @@ export const metadata = {
     images: ["/og-image.jpg"],
   },
   other: {
-    "google-site-verification": "3qjYnT7GW81-zwJBwv3wJABvxbiSOgDyAlTCKxh9nEs",
+    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? "",
   },
 };
 

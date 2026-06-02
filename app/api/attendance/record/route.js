@@ -21,8 +21,8 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   const body = await parseJSON(request, 1024);
-  const { userId, studentName, email, confidenceScore, date } = body;
-  const normalizedDate = (date || getLocalDateKey()).toString();
+  const { userId, studentName, email, confidenceScore } = body;
+  const normalizedDate = getLocalDateKey();
 
   // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
   const isTeacherOrAdmin = decodedToken.role === "teacher" || decodedToken.role === "admin";
@@ -51,6 +51,7 @@ export const POST = withErrorHandler(async (request) => {
   initFirebaseAdmin();
   const db = getFirestore();
 
+
   // Authoritatively fetch target student profile or use caller profile
   const targetUid = userId || decodedToken.uid;
   const userProfile = await getUserProfile(targetUid);
@@ -61,7 +62,6 @@ export const POST = withErrorHandler(async (request) => {
   const resolvedName = userProfile?.fullName || (decodedToken.uid === targetUid ? (decodedToken.name || decodedToken.displayName) : null) || studentName || "Unknown User";
   const resolvedEmail = userProfile?.email || (decodedToken.uid === targetUid ? decodedToken.email : null) || email || "unknown@learnova.edu";
 
-  let alreadyRecorded = false;
   const sagaResult = await executeSaga({
     operationType: "attendance_record",
     uid: decodedToken.uid,
@@ -99,8 +99,8 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "write_mongodb_attendance",
-        execute: async () => {
-          if (alreadyRecorded) {
+        execute: async (ctx) => {
+          if (ctx._alreadyRecorded) {
             return;
           }
           const mongoDB = await connectDb();
@@ -148,8 +148,12 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   if (!sagaResult.success) {
-    // Attendance was written but XP award failed — log for reconciliation
-    console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    if (sagaResult.failedStep === "award_xp") {
+      console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    } else {
+      console.error(`[attendance] Saga failed at step "${sagaResult.failedStep}" for user ${userId}: ${sagaResult.error}`);
+      return jsonError("Attendance recording failed", 502);
+    }
   }
 
   return jsonSuccess({ alreadyRecorded: false }, 201);

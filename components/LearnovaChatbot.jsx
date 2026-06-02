@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 // 🛠️ Local Fallback Intent Router Interface
@@ -449,10 +450,10 @@ export default function LearnovaChatbot() {
   const [currentCategory, setCurrentCategory] = useState("general");
   const [isScrolling, setIsScrolling] = useState(false);
 
-  // MongoDB Sync State Tracking Hooks
   const [chatHistory, setChatHistory] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const isMounted = useIsMounted();
 
   // Fetch callback handler pulling recent activity logs from MongoDB endpoint
   const fetchChatHistory = useCallback(async () => {
@@ -463,15 +464,15 @@ export default function LearnovaChatbot() {
       if (response.ok) {
         const result = await response.json();
         if (result.success && Array.isArray(result.data)) {
-          setChatHistory(result.data);
+          if (isMounted()) setChatHistory(result.data);
         }
       }
     } catch (error) {
       console.error("Failed to recover user chat logs:", error);
     } finally {
-      setIsHistoryLoading(false);
+      if (isMounted()) setIsHistoryLoading(false);
     }
-  }, [user]);
+  }, [user, isMounted]);
 
   // Lifecycle watcher syncing background drawer items when conversation view triggers
   useEffect(() => {
@@ -626,18 +627,20 @@ export default function LearnovaChatbot() {
         timestamp: new Date(),
       };
 
-      userHasScrolledUp.current = false;
-      setMessages((prev) => [...prev, botMsg]);
-      setIsLoading(false);
+      if (isMounted()) {
+        userHasScrolledUp.current = false;
+        setMessages((prev) => [...prev, botMsg]);
+        setIsLoading(false);
+      }
 
-      if (user) {
+      if (user && isMounted()) {
         try {
           await saveConversation(text, botText);
-          fetchChatHistory();
+          if (isMounted()) fetchChatHistory();
         } catch {}
       }
     },
-    [inputMessage, isLoading, currentCategory, user, messages, fetchChatHistory]
+    [inputMessage, isLoading, currentCategory, user, messages, fetchChatHistory, isMounted]
   );
 
   const handleKeyDown = (e) => {

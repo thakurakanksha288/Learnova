@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, runTransaction } from "firebase/firestore";
 import { toast } from "react-hot-toast";
-import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useSessionMonitor } from "@/hooks/useSessionMonitor";
 import {
   ensureClientCsrfToken,
@@ -69,7 +69,7 @@ export default function ClientLayout({ children }) {
   
   const { user, userProfile } = useAuth();
 
-  useOfflineQueue();
+  useOfflineSync();
   useSessionMonitor();
 
   const handleSearch = useCallback(() => {

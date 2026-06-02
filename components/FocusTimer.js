@@ -3,16 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, Play, Pause, RefreshCcw } from "lucide-react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const defaultDuration = 25 * 60;
 
 export default function FocusTimer() {
   const [secondsLeft, setSecondsLeft] = useState(defaultDuration);
   const [isRunning, setIsRunning] = useState(false);
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     if (!isRunning) return undefined;
     const interval = window.setInterval(() => {
+      if (!isMounted()) return;
       setSecondsLeft((current) => {
         if (current <= 1) {
           setIsRunning(false);

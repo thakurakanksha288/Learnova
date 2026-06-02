@@ -13,11 +13,15 @@ vi.mock('@/lib/firebase-admin', () => ({
   initializeFirebase: vi.fn(),
 }));
 
-vi.mock('firebase-admin', () => ({
-  default: {
-    firestore: vi.fn(),
-  },
-}));
+vi.mock('firebase-admin', () => {
+  const firestoreFn = vi.fn();
+  return {
+    default: {
+      firestore: firestoreFn,
+    },
+    firestore: firestoreFn,
+  };
+});
 
 describe('Cron Job: Attendance Warnings', () => {
   let mockDb;
