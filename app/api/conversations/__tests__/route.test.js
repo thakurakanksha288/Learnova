@@ -16,6 +16,24 @@ vi.mock("@/utils/promptGuard", () => ({
   sanitizeMessage: vi.fn((msg) => msg),
 }));
 
+vi.mock("groq-sdk", () => {
+  return {
+    Groq: vi.fn().mockImplementation(() => {
+      return {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue({
+              [Symbol.asyncIterator]: async function* () {
+                yield { choices: [{ delta: { content: "Mock response" } }] };
+              },
+            }),
+          },
+        },
+      };
+    }),
+  };
+});
+
 vi.mock("@/services/ai-agent/intentparser", () => ({
   parseUserIntent: vi.fn().mockResolvedValue(null),
 }));

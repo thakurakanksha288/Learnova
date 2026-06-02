@@ -9,7 +9,10 @@ import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 
 // Initialize the official Groq SDK client instance
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key" });
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key",
+  dangerouslyAllowBrowser: true,
+});
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -195,6 +198,13 @@ export async function POST(request) {
     if (error instanceof AppError) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: error.statusCode,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (error.message === "Unauthorized") {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
