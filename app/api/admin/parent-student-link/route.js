@@ -17,23 +17,43 @@ export const GET = withErrorHandler(async (request) => {
 
   // Fetch all links from Firestore
   const linksSnap = await db.collection("parent_student_links").get();
-  const links = [];
+  
+  const userIds = new Set();
+  linksSnap.docs.forEach(doc => {
+    userIds.add(doc.data().parentId);
+    userIds.add(doc.data().studentId);
+  });
 
+  const userDocs = new Map();
+  if (userIds.size > 0) {
+    const uidArray = Array.from(userIds);
+    const refs = uidArray.map(uid => db.collection("users").doc(uid));
+    
+    // Chunk refs into groups of 100 (getAll limit)
+    for (let i = 0; i < refs.length; i += 100) {
+      const chunkRefs = refs.slice(i, i + 100);
+      const docs = await db.getAll(...chunkRefs);
+      docs.forEach(doc => {
+        if (doc.exists) userDocs.set(doc.id, doc.data());
+      });
+    }
+  }
+
+  const links = [];
   for (const doc of linksSnap.docs) {
     const data = doc.data();
-    // Resolve names and emails
-    const parentDoc = await db.collection("users").doc(data.parentId).get();
-    const studentDoc = await db.collection("users").doc(data.studentId).get();
+    const pData = userDocs.get(data.parentId);
+    const sData = userDocs.get(data.studentId);
 
     links.push({
       id: doc.id,
       parentId: data.parentId,
       studentId: data.studentId,
       createdAt: data.createdAt,
-      parentName: parentDoc.exists ? (parentDoc.data().fullName || parentDoc.data().name || "Unknown") : "Unknown Parent",
-      parentEmail: parentDoc.exists ? parentDoc.data().email : "N/A",
-      studentName: studentDoc.exists ? (studentDoc.data().fullName || studentDoc.data().name || "Unknown") : "Unknown Student",
-      studentEmail: studentDoc.exists ? studentDoc.data().email : "N/A",
+      parentName: pData ? (pData.fullName || pData.name || "Unknown") : "Unknown Parent",
+      parentEmail: pData ? pData.email : "N/A",
+      studentName: sData ? (sData.fullName || sData.name || "Unknown") : "Unknown Student",
+      studentEmail: sData ? sData.email : "N/A",
     });
   }
 
