@@ -29,9 +29,12 @@ describe("DailyGoals Goal Management", () => {
       (value) => value
     );
 
-    global.crypto = {
-      randomUUID: vi.fn(() => "goal-123"),
-    };
+    Object.defineProperty(globalThis, "crypto", {
+      value: {
+        randomUUID: vi.fn(() => "goal-123"),
+      },
+      configurable: true,
+    });
   });
 
   test("renders empty state when no goals exist", () => {
@@ -103,11 +106,10 @@ describe("DailyGoals Goal Management", () => {
       })
     );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: /morning walk/i,
-      })
-    );
+    const [toggleButton] = screen.getAllByRole("button", {
+      name: /morning walk/i,
+    });
+    await user.click(toggleButton);
 
     expect(
       screen.getByText("Morning Walk")

@@ -5,6 +5,11 @@ import { vi } from "vitest";
 import AttendanceValidation from "../AttendanceValidation";
 
 const mockPush = vi.fn();
+const mockUserRef = vi.hoisted(() => ({
+  email: "student@test.com",
+  displayName: "Test Student",
+  getIdToken: vi.fn().mockResolvedValue("mock-token"),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -14,11 +19,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    user: {
-      email: "student@test.com",
-      displayName: "Test Student",
-      getIdToken: vi.fn().mockResolvedValue("mock-token"),
-    },
+    user: mockUserRef,
   }),
 }));
 
@@ -38,6 +39,7 @@ vi.mock("@/lib/apiClient", () => ({
 describe("AttendanceValidation Core States", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockApiFetch.mockReset();
   });
 
   test("renders loading state while attendance settings are loading", () => {

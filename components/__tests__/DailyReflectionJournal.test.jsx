@@ -58,7 +58,7 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(/one thing you're proud of/i)
+      screen.getByText(/one thing you\u2019re proud of/i)
     ).toBeInTheDocument();
   });
 
