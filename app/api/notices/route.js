@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Valid roles in Learnova — used to validate targetAudience entries
-const VALID_ROLES = ["student", "teacher", "institute", "admin", "staff"] as const;
+const VALID_ROLES = ["student", "teacher", "institute", "admin", "staff"];
 
 const noticeSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -66,7 +66,11 @@ async function publishNotice(request) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const validationResult = await validateRequest(request, createNoticeSchema, 1024 * 50);
+  const validationResult = await validateRequest(
+    request,
+    createNoticeSchema,
+    1024 * 50
+  );
   if (!validationResult.success) {
     return validationResult.response;
   }
