@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processOfflineQueueWithRetry } from '../utils/syncWorker'; // Adjust path if necessary
+import { processOfflineQueueWithRetry } from '../worker/syncWorker';
 
 describe('processOfflineQueueWithRetry', () => {
   it('should successfully sync actions on the first attempt', async () => {

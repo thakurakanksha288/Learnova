@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 // Accepted studentId pattern: Firebase UIDs are 28-character alphanumeric strings.
 // Reject values that do not conform to prevent path manipulation and enumeration.
-const STUDENT_ID_RE = /^[A-Za-z0-9]{10,128}$/;
+const STUDENT_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
 
 export const GET = withErrorHandler(async (request, context) => {
   const { payload: decodedToken } = await requireParent(request);
