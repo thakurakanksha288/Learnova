@@ -40,16 +40,20 @@ jobs:
 
       - name: 🔧 Fix Rollup native binding (Linux CI)
         run: |
-          ROLLUP_VER=$(node -p "require('./node_modules/rollup/package.json').version")
-          npm install --legacy-peer-deps --no-save "@rollup/rollup-linux-x64-gnu@${ROLLUP_VER}"
+          mkdir -p node_modules/@rollup/rollup-linux-x64-gnu
+          TAR=$(npm pack "@rollup/rollup-linux-x64-gnu@$(node -p "require('./node_modules/rollup/package.json').version")")
+          tar -xzf "$TAR" -C node_modules/@rollup/rollup-linux-x64-gnu --strip-components=1
+          rm -f "$TAR"
 
       - name: 🧪 Run unit tests
         run: npm test
 
       - name: 🔧 Fix Tailwind CSS native binding
         run: |
-          OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
-          npm install --legacy-peer-deps --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
+          mkdir -p node_modules/@tailwindcss/oxide-linux-x64-gnu
+          TAR=$(npm pack "@tailwindcss/oxide-linux-x64-gnu@$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")")
+          tar -xzf "$TAR" -C node_modules/@tailwindcss/oxide-linux-x64-gnu --strip-components=1
+          rm -f "$TAR"
 
       - name: ⚡ Cache Next.js build
         uses: actions/cache@v4
@@ -62,13 +66,17 @@ jobs:
 
       - name: 🔧 Fix Parcel Watcher native binding (Linux CI)
         run: |
-          PARCEL_VER=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
-          npm install --legacy-peer-deps --no-save "@parcel/watcher-linux-x64-glibc@${PARCEL_VER}"
+          mkdir -p node_modules/@parcel/watcher-linux-x64-glibc
+          TAR=$(npm pack "@parcel/watcher-linux-x64-glibc@$(node -p "require('./node_modules/@parcel/watcher/package.json').version")")
+          tar -xzf "$TAR" -C node_modules/@parcel/watcher-linux-x64-glibc --strip-components=1
+          rm -f "$TAR"
 
       - name: 🔧 Re-check Rollup native binding for build
         run: |
-          ROLLUP_VER=$(node -p "require('./node_modules/rollup/package.json').version")
-          npm install --legacy-peer-deps --no-save "@rollup/rollup-linux-x64-gnu@${ROLLUP_VER}"
+          mkdir -p node_modules/@rollup/rollup-linux-x64-gnu
+          TAR=$(npm pack "@rollup/rollup-linux-x64-gnu@$(node -p "require('./node_modules/rollup/package.json').version")")
+          tar -xzf "$TAR" -C node_modules/@rollup/rollup-linux-x64-gnu --strip-components=1
+          rm -f "$TAR"
 
       - name: 🔨 Build project
         run: npm run build
