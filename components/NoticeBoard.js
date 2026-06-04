@@ -83,6 +83,17 @@ const SmartNoticeBoard = () => {
   const [searchQuery, setSearchQuery] =
     useState("");
 
+  const [debouncedQuery, setDebouncedQuery] =
+  useState("");
+  // Debounced search for better performance
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedQuery(searchQuery);
+  }, 300);
+
+  return () => clearTimeout(timer);
+}, [searchQuery]);
+
   const [selectedCategory, setSelectedCategory] =
     useState("all");
 
@@ -344,7 +355,7 @@ const SmartNoticeBoard = () => {
 
   // Filter notices
   const filteredNotices = useMemo(() => {
-    const queryText = searchQuery
+    const queryText = debouncedQuery
       .trim()
       .toLowerCase();
 
@@ -452,7 +463,7 @@ const SmartNoticeBoard = () => {
       });
   }, [
     notices,
-    searchQuery,
+    debouncedQuery,
     selectedCategory,
     selectedPriority,
     selectedTags,
