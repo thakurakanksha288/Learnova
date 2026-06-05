@@ -147,7 +147,6 @@ export default function UniversalSettings() {
                     await updateDoc(doc(db, "users", user.uid), {
                       fcmToken: token,
                     });
-                    console.log("FCM Token saved successfully");
                   }
                 } catch (tokenErr) {
                   console.error("Error getting FCM token:", tokenErr);
