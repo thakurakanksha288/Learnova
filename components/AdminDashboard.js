@@ -202,28 +202,24 @@ const SuperAdminDashboard = () => {
     const fetchStats = async () => {
       try {
         const token = await user.getIdToken();
-        const res = await apiFetch("/api/admin/stats", {
+        const data = await apiFetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
 
         if (!isActive) return;
 
-        if (res.ok) {
-          const data = await res.json();
+        if (data) {
           if (data.platformStats) setPlatformStats(data.platformStats);
           if (data.institutes) setInstitutes(data.institutes);
           if (data.systemMetrics) setSystemMetrics(data.systemMetrics);
           if (data.criticalAlerts) setCriticalAlerts(data.criticalAlerts);
           if (data.featureUsage) setFeatureUsage(data.featureUsage);
-        } else {
-          console.error("Failed to fetch admin stats:", res.status);
-          toast.error("Failed to load platform stats. Please refresh.");
         }
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Error fetching admin stats:", err);
-        toast.error("Network error loading admin stats.");
+        toast.error(err.message || "Network error loading admin stats.");
       } finally {
         if (isActive) {
           setLoading(false);
@@ -244,18 +240,13 @@ const SuperAdminDashboard = () => {
     setLinksLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch("/api/admin/parent-student-link", {
+      const data = await apiFetch("/api/admin/parent-student-link", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setLinks(data.links || []);
-      } else {
-        toast.error("Failed to load parent-student links");
-      }
+      setLinks(data.links || []);
     } catch (err) {
       console.error(err);
-      toast.error("Error loading links");
+      toast.error(err.message || "Error loading links");
     } finally {
       setLinksLoading(false);
     }
@@ -275,8 +266,8 @@ const SuperAdminDashboard = () => {
     }
     setLinkingSubmitLoading(true);
     try {
-      const token = await user.getIdToken();
-      const res = await apiFetch("/api/admin/parent-student-link", {
+      const token = await user?.getIdToken();
+      await apiFetch("/api/admin/parent-student-link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -287,18 +278,13 @@ const SuperAdminDashboard = () => {
           studentEmail: studentEmail.trim(),
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Accounts linked successfully!");
-        setParentEmail("");
-        setStudentEmail("");
-        fetchLinks();
-      } else {
-        toast.error(data.error || "Failed to link accounts");
-      }
+      toast.success("Accounts linked successfully!");
+      setParentEmail("");
+      setStudentEmail("");
+      fetchLinks();
     } catch (err) {
       console.error(err);
-      toast.error("Error creating relationship link");
+      toast.error(err.message || "Error creating relationship link");
     } finally {
       setLinkingSubmitLoading(false);
     }
@@ -313,22 +299,18 @@ const SuperAdminDashboard = () => {
       return;
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch(
+      await apiFetch(
         `/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (res.ok) {
-        toast.success("Relationship removed successfully");
-        fetchLinks();
-      } else {
-        toast.error("Failed to delete relationship link");
-      }
+      toast.success("Relationship removed successfully");
+      fetchLinks();
     } catch (err) {
       console.error(err);
-      toast.error("Error deleting link");
+      toast.error(err.message || "Error deleting relationship link");
     }
   };
 

@@ -207,13 +207,6 @@ export async function GET(request) {
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
 
-      // Derive the institute ID from the settings document. instituteId is the
-      // canonical field; fall back to _id only when instituteId is absent.
-      // Reject any document whose instituteId cannot be determined as a
-      // non-empty string: processing it with an undefined or empty key would
-      // cause studentsByInstitute.get() to return undefined, silently matching
-      // no students or incorrectly matching students from another institute if
-      // two settings documents resolve to the same fallback key.
       const rawInstituteId = settings.instituteId;
       if (
         !rawInstituteId ||
@@ -228,19 +221,11 @@ export async function GET(request) {
       }
       const instituteId = rawInstituteId.trim();
 
-      // Fetch students for this institute only instead of loading all students globally
-      const instituteStudents = await db
-        .collection("users")
-        .find({
-          role: "student",
-          instituteId,
-        })
-        .toArray();
-
+      const instituteStudents = studentsByInstitute.get(instituteId) || [];
       if (instituteStudents.length === 0) continue;
 
       const instituteStudentUids = instituteStudents
-        .map((s) => s.firebaseUid)
+        .map((s) => s.uid || s.firebaseUid)
         .filter(Boolean);
 
       const attendanceRecords = await db
@@ -257,7 +242,7 @@ export async function GET(request) {
       }
 
       for (const student of instituteStudents) {
-        const studentUid = student.firebaseUid;
+        const studentUid = student.uid || student.firebaseUid;
         if (!studentUid) continue;
 
         if (recentWarningUserIds.has(studentUid)) {
@@ -296,6 +281,7 @@ export async function GET(request) {
               to_name: name,
               attendance_percentage: evaluation.percentage,
               threshold,
+              threshold,
             });
           }
 
@@ -308,7 +294,11 @@ export async function GET(request) {
       }
     }
 
-    await flushNotifications();
+    if (notificationsToInsert.length > 0) {
+      await db.collection("notifications").insertMany(notificationsToInsert);
+      await db.collection("warning_logs").insertMany(warningLogsToInsert);
+    }
+
     await sendWarningEmails(emailsToSend);
 
     return NextResponse.json({

@@ -79,6 +79,7 @@ export const POST = withErrorHandler(
       );
     }
 
+    const { verifyPasscode } = await import("@/utils/passcodeUtils");
     if (verifyPasscode(passcode, settings.passcode)) {
       return NextResponse.json({ valid: true });
     }

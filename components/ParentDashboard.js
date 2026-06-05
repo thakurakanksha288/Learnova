@@ -75,21 +75,16 @@ const ParentDashboard = () => {
     setLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch("/api/parent/dashboard", {
+      const data = await apiFetch("/api/parent/dashboard", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setChildren(data.students || []);
-        if (data.students && data.students.length > 0) {
-          setSelectedChild(data.students[0]);
-        }
-      } else {
-        toast.error("Failed to load portal data");
+      setChildren(data.students || []);
+      if (data.students && data.students.length > 0) {
+        setSelectedChild(data.students[0]);
       }
     } catch (err) {
       console.error(err);
-      toast.error("Error loading dashboard data");
+      toast.error(err.message || "Error loading dashboard data");
     } finally {
       setLoading(false);
     }
@@ -107,7 +102,7 @@ const ParentDashboard = () => {
       try {
         const token = await user.getIdToken();
 
-        const [attRes, gradesRes, noticesRes] = await Promise.all([
+        const [attData, gradesData, noticesData] = await Promise.all([
           apiFetch(`/api/parent/student/${childId}/attendance`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -119,17 +114,14 @@ const ParentDashboard = () => {
           }),
         ]);
 
-        if (attRes.ok) {
-          const data = await attRes.json();
-          setAttendance(data);
+        if (attData) {
+          setAttendance(attData);
         }
-        if (gradesRes.ok) {
-          const data = await gradesRes.json();
-          setGrades(data.grades || []);
+        if (gradesData) {
+          setGrades(gradesData.grades || []);
         }
-        if (noticesRes.ok) {
-          const data = await noticesRes.json();
-          setNotices(data.notices || []);
+        if (noticesData) {
+          setNotices(noticesData.notices || []);
         }
       } catch (err) {
         console.error(err);

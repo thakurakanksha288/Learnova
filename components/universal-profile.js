@@ -349,18 +349,12 @@ export default function UniversalProfile() {
         uploadFormData.append("faceDescriptor", faceDescriptorString);
       }
 
-      const res = await apiFetch("/api/images", {
+      const data = await apiFetch("/api/images", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to upload image");
-      }
-
-      const data = await res.json();
       if (data.success && data.url) {
         await updateProfile(user, { photoURL: data.url });
         const userRef = doc(db, "users", user.uid);

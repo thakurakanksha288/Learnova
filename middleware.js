@@ -136,7 +136,6 @@ function cleanupRateLimitMap() {
     // Cleanup failure must never crash the middleware
   }
 }
-
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
 function buildPageCsp(nonce) {
@@ -228,15 +227,9 @@ async function verifyIdToken(token) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
-
-  if (
-    PUBLIC_PATHS.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`)
-    )
-  ) {
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return NextResponse.next();
   }
-
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
   cleanupRateLimitMap();
 
@@ -310,6 +303,14 @@ export async function middleware(request) {
   }
 
   return response;
+}
+
+// Exported for unit testing (in-memory fallback behavior)
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+
+// Test helper to control cleanup timer
+function resetForTest(now) {
+  lastCleanupTime = now;
 }
 
 export const config = {
