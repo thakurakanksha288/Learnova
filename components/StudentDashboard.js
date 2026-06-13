@@ -353,7 +353,7 @@ const StudentDashboard = () => {
       clearInterval(timer);
       clearTimeout(loadingTimer);
     };
-  }, []);
+  }, [isMounted]);
 
   const handleEvaluateQuiz = (scoreOutOfFive) => {
     const percentage = (scoreOutOfFive / 5) * 100;
