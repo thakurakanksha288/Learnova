@@ -29,6 +29,7 @@ import {
   BookMarked,
   Filter,
   Check,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -55,6 +56,10 @@ import { Navbar } from "./Navbar";
 import { dashboardContentOffsetClass } from "@/components/navigation";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import ExportDropdown from "@/components/ui/ExportDropdown";
+import EngagementScoreCard from "@/components/EngagementScoreCard";
+import EngagementTrendChart from "@/components/EngagementTrendChart";
+import EngagementBreakdown from "@/components/EngagementBreakdown";
+import { getEngagementCategory } from "@/lib/engagementScore";
 import dynamic from "next/dynamic";
 
 const ParentAchievementsPanel = dynamic(
@@ -137,6 +142,9 @@ const ParentDashboard = () => {
   const [attendance, setAttendance] = useState(null);
   const [grades, setGrades] = useState([]);
   const [notices, setNotices] = useState([]);
+  const [engagementRecord, setEngagementRecord] = useState(null);
+  const [engagementHistory, setEngagementHistory] = useState([]);
+  const [engagementError, setEngagementError] = useState(null);
 
   // Configurable attendance threshold
   const [threshold, setThreshold] = useState(75);
@@ -188,7 +196,7 @@ const ParentDashboard = () => {
       try {
         const token = await user.getIdToken();
 
-        const [attRes, gradesRes, noticesRes] = await Promise.all([
+        const [attRes, gradesRes, noticesRes, engRes] = await Promise.all([
           apiFetch(`/api/parent/student/${childId}/attendance`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -196,6 +204,9 @@ const ParentDashboard = () => {
             headers: { Authorization: `Bearer ${token}` },
           }),
           apiFetch(`/api/parent/student/${childId}/notices`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          apiFetch(`/api/engagement-scores?studentId=${childId}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -211,6 +222,14 @@ const ParentDashboard = () => {
         if (noticesRes.ok) {
           const data = await noticesRes.json();
           setNotices(data.notices || []);
+        }
+        if (engRes.ok) {
+          const data = await engRes.json();
+          setEngagementRecord(data.latest || null);
+          setEngagementHistory(data.history || []);
+          setEngagementError(null);
+        } else {
+          setEngagementError("Unable to load engagement data.");
         }
       } catch (err) {
         console.error(err);
@@ -307,6 +326,28 @@ const ParentDashboard = () => {
     const categories = new Set(notices.map((n) => n.category));
     return ["All", ...Array.from(categories)];
   }, [notices]);
+
+  const engagementMetrics = useMemo(() => {
+    if (!engagementRecord) {
+      return {
+        overallScore: 0,
+        attendanceScore: 0,
+        activityScore: 0,
+        assignmentScore: 0,
+        academicScore: 0,
+        category: "Unknown",
+      };
+    }
+    const category = getEngagementCategory(engagementRecord.overallScore);
+    return {
+      overallScore: engagementRecord.overallScore,
+      attendanceScore: engagementRecord.attendanceScore,
+      activityScore: engagementRecord.activityScore,
+      assignmentScore: engagementRecord.assignmentScore,
+      academicScore: engagementRecord.academicScore,
+      category,
+    };
+  }, [engagementRecord]);
 
   // Derived mock rewards/achievements count for visual richness
   const mockAchievementsCount = useMemo(() => {
@@ -565,6 +606,35 @@ const ParentDashboard = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Engagement Score Section ── */}
+      <div className="max-w-7xl mx-auto px-6 mb-8">
+        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <EngagementScoreCard
+            overallScore={engagementMetrics.overallScore}
+            attendanceScore={engagementMetrics.attendanceScore}
+            activityScore={engagementMetrics.activityScore}
+            assignmentScore={engagementMetrics.assignmentScore}
+            academicScore={engagementMetrics.academicScore}
+          />
+          <div className="space-y-6">
+            <EngagementTrendChart history={engagementHistory} />
+            <EngagementBreakdown
+              breakdown={[
+                { label: "Attendance", value: engagementMetrics.attendanceScore },
+                { label: "Activity Participation", value: engagementMetrics.activityScore },
+                { label: "Assignment Submissions", value: engagementMetrics.assignmentScore },
+                { label: "Academic Performance", value: engagementMetrics.academicScore },
+              ]}
+            />
+            {engagementError && (
+              <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-4 text-rose-200 text-sm">
+                {engagementError}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ── Tab Switcher Menu ── */}
       <div className="max-w-7xl mx-auto px-6 mb-8">
