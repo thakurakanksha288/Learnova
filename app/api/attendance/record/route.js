@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { recordAttendanceSchema, withValidation } from "@/lib/validations";
 import { AttendanceService } from "@/lib/services/attendanceService";
+import { executeWithRetry } from "@/utils/dbRetry";
 
 export const POST = withErrorHandler(
   withValidation(
@@ -21,7 +22,7 @@ export const POST = withErrorHandler(
         throw new AppError("Too many attempts. Please try again later.", 429);
       }
 
-      const { userId, studentName, email, confidenceScore, date } =
+      const { userId, studentName, email, confidenceScore, date, curriculumNodeId } =
         validatedData;
       const normalizedDate = date || getLocalDateKey();
 
@@ -47,30 +48,57 @@ export const POST = withErrorHandler(
       // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
       const normalizedConfidence = parsedConfidence / 100;
 
-      // 4. Record attendance using the domain service
-      const sagaResult = await AttendanceService.recordAttendance(
-        {
-          userId,
-          studentName,
-          email,
-          confidenceScore,
-          normalizedDate,
-        },
-        token
-      );
+      try {
+        // 4. Record attendance using the domain service wrapped with the Deadlock Retry Utility
+        const sagaResult = await executeWithRetry(async () => {
+          return await AttendanceService.recordAttendance(
+            {
+              userId,
+              studentName,
+              email,
+              confidenceScore: normalizedConfidence, // Using normalized value consistently
+              normalizedDate,
+              curriculumNodeId, // Ensure structural context links to the curriculum node
+            },
+            token
+          );
+        });
 
-      if (sagaResult.context._alreadyRecorded) {
-        return jsonSuccess({ alreadyRecorded: true }, 200);
-      }
+        if (sagaResult.context?._alreadyRecorded) {
+          return jsonSuccess({ alreadyRecorded: true }, 200);
+        }
 
-      if (!sagaResult.success) {
+        if (!sagaResult.success) {
+          console.error(
+            JSON.stringify({
+              message: `[attendance] Saga failed at step "${sagaResult.failedStep}"`,
+              userId,
+              curriculumNodeId,
+              error: sagaResult.error,
+              timestamp: new Date().toISOString()
+            })
+          );
+          
+          if (sagaResult.error === 'STALE_OBJECT_STATE' || sagaResult.failedStep === 'lock_curriculum') {
+            return jsonError("Conflict: The curriculum map was updated mid-flight. Please refresh.", 409);
+          }
+          
+          return jsonError("Attendance recording failed", 502);
+        }
+
+        return jsonSuccess({ alreadyRecorded: false }, 201);
+
+      } catch (error) {
         console.error(
-          `[attendance] Saga failed at step "${sagaResult.failedStep}" for user ${userId}: ${sagaResult.error}`
+          JSON.stringify({
+            message: "Uncaught transaction collision error in attendance logging",
+            error: error.message,
+            userId,
+            timestamp: new Date().toISOString()
+          })
         );
-        return jsonError("Attendance recording failed", 502);
+        return jsonError("Database lock isolation failure. Please retry.", 500);
       }
-
-      return jsonSuccess({ alreadyRecorded: false }, 201);
     }
   )
 );
