@@ -1,7 +1,21 @@
-import nextConfig from "eslint-config-next/core-web-vitals";
+import { FlatCompat } from "@eslint/eslintrc";
+import path from "path";
+import { fileURLToPath } from "url";
 
-export default [
-  ...nextConfig,
+// 1. Recreate standard directory paths for the Flat Config engine
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 2. Initialize the Legacy Configuration Compatibility Layer
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  // 3. Safely translate and load the Next.js Core Web Vitals preset
+  ...compat.extends("eslint-config-next/core-web-vitals"),
+
+  // 4. Inject all your custom project rules smoothly
   {
     rules: {
       "no-console": "warn",
@@ -15,3 +29,5 @@ export default [
     },
   },
 ];
+
+export default eslintConfig;
