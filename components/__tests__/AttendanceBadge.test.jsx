@@ -24,10 +24,18 @@ vi.mock("framer-motion", async () => {
   return {
     motion: {
       article: actualReact.forwardRef(({ children, ...props }, ref) =>
-        actualReact.createElement("article", { ref, ...stripMotionProps(props) }, children)
+        actualReact.createElement(
+          "article",
+          { ref, ...stripMotionProps(props) },
+          children
+        )
       ),
       div: actualReact.forwardRef(({ children, ...props }, ref) =>
-        actualReact.createElement("div", { ref, ...stripMotionProps(props) }, children)
+        actualReact.createElement(
+          "div",
+          { ref, ...stripMotionProps(props) },
+          children
+        )
       ),
     },
   };

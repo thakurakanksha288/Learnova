@@ -22,7 +22,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -37,7 +36,6 @@ const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/verify-otp/callback",
 ];
 
-
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
 function isAuthRoute(pathname) {
@@ -45,11 +43,15 @@ function isAuthRoute(pathname) {
 }
 
 async function rateLimit(ip, pathname, request) {
-  const cookies = typeof request.cookies?.get === "function" ? request.cookies : { get: () => undefined };
-  const sessionFingerprint = cookies.get("__Secure-next-auth.session-token")?.value
-    || cookies.get("next-auth.session-token")?.value
-    || cookies.get("authToken")?.value
-    || "";
+  const cookies =
+    typeof request.cookies?.get === "function"
+      ? request.cookies
+      : { get: () => undefined };
+  const sessionFingerprint =
+    cookies.get("__Secure-next-auth.session-token")?.value ||
+    cookies.get("next-auth.session-token")?.value ||
+    cookies.get("authToken")?.value ||
+    "";
   const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
   const limit = RATE_LIMIT_MAX;
   const windowMs = RATE_LIMIT_WINDOW_MS;
@@ -73,7 +75,8 @@ async function rateLimit(ip, pathname, request) {
       const current = Number(count);
       if (current > limit) {
         const oldest = await redis.zrange(key, 0, 0, { withScores: true });
-        const resetTime = oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
+        const resetTime =
+          oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
         const retryAfter = Math.ceil((resetTime - now) / 1000);
         return { allowed: false, remaining: 0, retryAfter };
       }
@@ -81,7 +84,11 @@ async function rateLimit(ip, pathname, request) {
       return { allowed: true, remaining: limit - current };
     } catch (err) {
       console.error("[rate-limit] Upstash Redis error — denying request:", err);
-      return { allowed: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: Math.ceil(windowMs / 1000),
+      };
     }
   }
 
@@ -384,7 +391,11 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+  if (
+    PUBLIC_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    )
+  ) {
     return NextResponse.next();
   }
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
@@ -413,7 +424,11 @@ export async function middleware(request) {
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
+    const { allowed, remaining, retryAfter } = await rateLimit(
+      ip,
+      pathname,
+      request
+    );
 
     if (!allowed) {
       return NextResponse.json(
@@ -536,7 +551,12 @@ export async function middleware(request) {
   // defined in API_ROUTE_RULES. Fail-closed: unmatched paths default to
   // authenticated access.
   if (pathname.startsWith("/api/") && !matchedDashboard) {
-    const rbacResult = enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole);
+    const rbacResult = enforceApiRbac(
+      pathname,
+      isTokenValid,
+      isEmailVerified,
+      userRole
+    );
     if (rbacResult) {
       return NextResponse.json(
         { error: rbacResult.error },
@@ -641,7 +661,13 @@ export async function middleware(request) {
 }
 
 // Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+export {
+  isAuthRoute,
+  rateLimit,
+  cleanupRateLimitMap,
+  devRateLimitMap,
+  resetForTest,
+};
 
 // Test helper to control cleanup timer
 function resetForTest(now) {
@@ -653,4 +679,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };
-        

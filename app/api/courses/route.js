@@ -45,7 +45,10 @@ export async function PUT(request) {
   try {
     const token = await requireAuth(request);
     if (token.role !== "admin" && token.role !== "teacher") {
-      return NextResponse.json({ error: "Forbidden: Insufficient privileges" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden: Insufficient privileges" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -53,18 +56,23 @@ export async function PUT(request) {
 
     if (!curriculumNodeId || currentVersion === undefined) {
       return NextResponse.json(
-        { error: 'Bad Request: Missing curriculumNodeId or currentVersion parameters.' }, 
+        {
+          error:
+            "Bad Request: Missing curriculumNodeId or currentVersion parameters.",
+        },
         { status: 400 }
       );
     }
 
     initFirebaseAdmin();
     const db = getFirestore();
-    const curriculumRef = db.collection("curriculum_nodes").doc(curriculumNodeId);
+    const curriculumRef = db
+      .collection("curriculum_nodes")
+      .doc(curriculumNodeId);
 
     await db.runTransaction(async (transaction) => {
       const curriculumDoc = await transaction.get(curriculumRef);
-      
+
       if (!curriculumDoc.exists) {
         throw new Error("NOT_FOUND");
       }
@@ -79,24 +87,33 @@ export async function PUT(request) {
       transaction.update(curriculumRef, {
         structure_data: newStructure,
         version: databaseVersion + 1,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
     });
 
-    return NextResponse.json({ success: true, message: 'Curriculum structure synchronized securely.' });
-
+    return NextResponse.json({
+      success: true,
+      message: "Curriculum structure synchronized securely.",
+    });
   } catch (error) {
     console.error("API Course Synchronization Error:", error.message);
 
     if (error.message === "STALE_VERSION") {
-      return NextResponse.json({ 
-        error: 'CONFLICT', 
-        message: 'The curriculum map has changed. Please refresh your view to fetch latest changes.' 
-      }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: "CONFLICT",
+          message:
+            "The curriculum map has changed. Please refresh your view to fetch latest changes.",
+        },
+        { status: 409 }
+      );
     }
 
     if (error.message === "NOT_FOUND") {
-      return NextResponse.json({ error: 'Referenced curriculum entry not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Referenced curriculum entry not found." },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(

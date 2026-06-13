@@ -433,14 +433,19 @@ export default function UniversalSettings() {
             credentials: "include", // Include cookies for authentication
           });
 
-          const uploadResponseText = await uploadResponse.text().catch(() => "");
+          const uploadResponseText = await uploadResponse
+            .text()
+            .catch(() => "");
           let uploadData = null;
 
           if (uploadResponseText) {
             try {
               uploadData = JSON.parse(uploadResponseText);
             } catch (parseError) {
-              console.error("Error parsing avatar upload response:", parseError);
+              console.error(
+                "Error parsing avatar upload response:",
+                parseError
+              );
               throw new Error("Avatar upload returned invalid data.");
             }
           }
@@ -455,7 +460,9 @@ export default function UniversalSettings() {
           }
 
           if (!uploadData || !uploadData.url) {
-            throw new Error("Avatar upload completed without a usable image URL.");
+            throw new Error(
+              "Avatar upload completed without a usable image URL."
+            );
           }
 
           avatarUrl = uploadData.url;
@@ -464,7 +471,8 @@ export default function UniversalSettings() {
         } catch (avatarError) {
           console.error("Error uploading avatar:", avatarError);
           toast.error(
-            avatarError?.message || "Avatar upload failed, saving other settings only."
+            avatarError?.message ||
+              "Avatar upload failed, saving other settings only."
           );
         }
       }

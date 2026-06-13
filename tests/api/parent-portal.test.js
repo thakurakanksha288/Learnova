@@ -195,7 +195,10 @@ describe("Parent Portal Feature Tests", () => {
     const createQueryBuilder = (colName, accumulatedFilters = []) => {
       const builder = {
         where: vi.fn((field, op, val) => {
-          return createQueryBuilder(colName, [...accumulatedFilters, { field, op, val }]);
+          return createQueryBuilder(colName, [
+            ...accumulatedFilters,
+            { field, op, val },
+          ]);
         }),
         orderBy: vi.fn(() => builder),
         limit: vi.fn(() => builder),
@@ -211,7 +214,10 @@ describe("Parent Portal Feature Tests", () => {
                 itemValue = itemValue.toDate();
               } else if (itemValue instanceof Date) {
                 itemValue = itemValue.getTime();
-              } else if (typeof itemValue === "string" && !isNaN(Date.parse(itemValue))) {
+              } else if (
+                typeof itemValue === "string" &&
+                !isNaN(Date.parse(itemValue))
+              ) {
                 itemValue = new Date(itemValue).getTime();
               }
 
@@ -219,14 +225,19 @@ describe("Parent Portal Feature Tests", () => {
                 filterVal = filterVal.toDate();
               } else if (filterVal instanceof Date) {
                 filterVal = filterVal.getTime();
-              } else if (typeof filterVal === "string" && !isNaN(Date.parse(filterVal))) {
+              } else if (
+                typeof filterVal === "string" &&
+                !isNaN(Date.parse(filterVal))
+              ) {
                 filterVal = new Date(filterVal).getTime();
               }
 
               if (filter.op === "==") return itemValue === filterVal;
               if (filter.op === "array-contains-any") {
                 const arr = itemValue || [];
-                return Array.isArray(arr) && filter.val.some((v) => arr.includes(v));
+                return (
+                  Array.isArray(arr) && filter.val.some((v) => arr.includes(v))
+                );
               }
               if (filter.op === ">=") return itemValue >= filterVal;
               return false;
@@ -267,11 +278,13 @@ describe("Parent Portal Feature Tests", () => {
       collection: vi.fn((colName) => {
         return {
           get: vi.fn(async () => {
-            const docs = Object.entries(store[colName] || {}).map(([id, val]) => ({
-              id,
-              exists: true,
-              data: () => val,
-            }));
+            const docs = Object.entries(store[colName] || {}).map(
+              ([id, val]) => ({
+                id,
+                exists: true,
+                data: () => val,
+              })
+            );
             return { empty: docs.length === 0, docs };
           }),
           doc: vi.fn((docId) => {
@@ -442,7 +455,11 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 400, "This relationship is already linked");
+      await assertApiError(
+        response,
+        400,
+        "This relationship is already linked"
+      );
     });
 
     it("DELETE /api/admin/parent-student-link: should delete successfully", async () => {
@@ -559,7 +576,7 @@ describe("Parent Portal Feature Tests", () => {
         type: "low_attendance",
         createdAt: {
           toDate: () => liveDate,
-          getTime: () => liveDate.getTime()
+          getTime: () => liveDate.getTime(),
         },
         message: "Alert: Student Two's attendance is low.",
         read: false,
@@ -570,7 +587,7 @@ describe("Parent Portal Feature Tests", () => {
       const notifications = Object.values(store.notifications).filter(
         (n) => n.studentId === "student-2" && n.recipientId === "parent-1"
       );
-      
+
       expect(notifications.length).toBeGreaterThanOrEqual(1);
     });
   });

@@ -66,18 +66,21 @@ async function sendWarningEmails(emailsToSend) {
 
   const sendEmail = async (emailData) => {
     try {
-      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service_id: process.env.EMAILJS_SERVICE_ID,
-          template_id: process.env.EMAILJS_TEMPLATE_ID,
-          user_id: process.env.EMAILJS_PUBLIC_KEY,
-          template_params: emailData,
-        }),
-      });
+      const response = await fetch(
+        "https://api.emailjs.com/api/v1.0/email/send",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            service_id: process.env.EMAILJS_SERVICE_ID,
+            template_id: process.env.EMAILJS_TEMPLATE_ID,
+            user_id: process.env.EMAILJS_PUBLIC_KEY,
+            template_params: emailData,
+          }),
+        }
+      );
 
       if (!response.ok) {
         let responseBody = "";
@@ -164,7 +167,8 @@ export async function GET(request) {
           message: notif.message,
           type: notif.type,
           read: false,
-          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+          createdAt:
+            notif.createdAt?.toISOString?.() || new Date().toISOString(),
         }).catch(() => {});
       }
       notificationsToInsert = [];
@@ -224,16 +228,21 @@ export async function GET(request) {
       // Process students in batches to keep memory usage bounded
       for (let i = 0; i < instituteStudents.length; i += STUDENT_BATCH_SIZE) {
         const batch = instituteStudents.slice(i, i + STUDENT_BATCH_SIZE);
-        const batchUids = batch.map(s => s.uid || s.firebaseUid).filter(Boolean);
+        const batchUids = batch
+          .map((s) => s.uid || s.firebaseUid)
+          .filter(Boolean);
         if (batchUids.length === 0) continue;
 
         // Load attendance records for this batch only
-        const records = await db.collection("attendance").find({
-          userId: { $in: batchUids },
-          instituteId,
-        }).toArray();
+        const records = await db
+          .collection("attendance")
+          .find({
+            userId: { $in: batchUids },
+            instituteId,
+          })
+          .toArray();
 
-        const attendanceByUser = new Map(batchUids.map(uid => [uid, []]));
+        const attendanceByUser = new Map(batchUids.map((uid) => [uid, []]));
         for (const record of records) {
           const userRecords = attendanceByUser.get(record.userId);
           if (userRecords) {
@@ -246,7 +255,10 @@ export async function GET(request) {
           if (!uid || recentWarningUserIds.has(uid)) continue;
 
           const studentAttendance = attendanceByUser.get(uid) || [];
-          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+          const evaluation = evaluateStudentAttendance(
+            studentAttendance,
+            threshold
+          );
 
           if (evaluation.isBelowThreshold) {
             const email = student.email;
@@ -298,7 +310,8 @@ export async function GET(request) {
           message: notif.message,
           type: notif.type,
           read: false,
-          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+          createdAt:
+            notif.createdAt?.toISOString?.() || new Date().toISOString(),
         }).catch(() => {});
       }
     }

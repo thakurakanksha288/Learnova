@@ -77,20 +77,26 @@ export const GET = withErrorHandler(async (request) => {
 
     // 1. Critical Check: Trigger low-attendance notification if rate is below 75%
     if (attendanceRate < 75) {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
+      const oneDayAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
+
       const existingAlerts = await db
         .collection("notifications")
         .where("recipientId", "==", parentId)
         .where("studentId", "==", studentId)
         .get();
 
-      const hasRecentAlert = existingAlerts.docs && existingAlerts.docs.length > 0
-        ? existingAlerts.docs.some(doc => {
-            const data = doc.data();
-            return data.type === "low_attendance" && (!data.createdAt || data.createdAt >= oneDayAgo);
-          })
-        : false;
+      const hasRecentAlert =
+        existingAlerts.docs && existingAlerts.docs.length > 0
+          ? existingAlerts.docs.some((doc) => {
+              const data = doc.data();
+              return (
+                data.type === "low_attendance" &&
+                (!data.createdAt || data.createdAt >= oneDayAgo)
+              );
+            })
+          : false;
 
       if (!hasRecentAlert) {
         await db.collection("notifications").add({
@@ -102,14 +108,14 @@ export const GET = withErrorHandler(async (request) => {
           read: false,
         });
       }
-    } 
+    }
     // 2. Early Warning Check: Trigger warning if projected attendance is below 75%
     else {
       const recordsQuery = await db
         .collection("attendance_records")
         .where("userId", "==", studentId)
         .get();
-      
+
       const studentRecords = [];
       recordsQuery.docs.forEach((doc) => {
         const data = doc.data();
@@ -121,20 +127,26 @@ export const GET = withErrorHandler(async (request) => {
 
       const prediction = predictStudentAttendance(studentRecords);
       if (prediction.riskLevel === "high") {
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        
+        const oneDayAgo = new Date(
+          Date.now() - 24 * 60 * 60 * 1000
+        ).toISOString();
+
         const existingWarningAlerts = await db
           .collection("notifications")
           .where("recipientId", "==", parentId)
           .where("studentId", "==", studentId)
           .get();
 
-        const hasRecentWarning = existingWarningAlerts.docs && existingWarningAlerts.docs.length > 0
-          ? existingWarningAlerts.docs.some(doc => {
-              const data = doc.data();
-              return data.type === "attendance_warning" && (!data.createdAt || data.createdAt >= oneDayAgo);
-            })
-          : false;
+        const hasRecentWarning =
+          existingWarningAlerts.docs && existingWarningAlerts.docs.length > 0
+            ? existingWarningAlerts.docs.some((doc) => {
+                const data = doc.data();
+                return (
+                  data.type === "attendance_warning" &&
+                  (!data.createdAt || data.createdAt >= oneDayAgo)
+                );
+              })
+            : false;
 
         if (!hasRecentWarning) {
           await db.collection("notifications").add({

@@ -22,8 +22,14 @@ export const POST = withErrorHandler(
         throw new AppError("Too many attempts. Please try again later.", 429);
       }
 
-      const { userId, studentName, email, confidenceScore, date, curriculumNodeId } =
-        validatedData;
+      const {
+        userId,
+        studentName,
+        email,
+        confidenceScore,
+        date,
+        curriculumNodeId,
+      } = validatedData;
       const normalizedDate = date || getLocalDateKey();
 
       const isTeacherOrAdmin =
@@ -36,9 +42,12 @@ export const POST = withErrorHandler(
       }
 
       const parsedConfidence = Number(confidenceScore);
-      
+
       // Validation guard scaled cleanly against both structural percentage types
-      if ((parsedConfidence > 1 && parsedConfidence < 60) || (parsedConfidence <= 1 && parsedConfidence < 0.60)) {
+      if (
+        (parsedConfidence > 1 && parsedConfidence < 60) ||
+        (parsedConfidence <= 1 && parsedConfidence < 0.6)
+      ) {
         return jsonError(
           "Bad Request: Invalid or spoofed confidence score",
           400
@@ -46,7 +55,8 @@ export const POST = withErrorHandler(
       }
 
       // Automatically scale scores down to decimal representation only if provided as whole integers
-      const executionConfidence = parsedConfidence > 1 ? parsedConfidence / 100 : parsedConfidence;
+      const executionConfidence =
+        parsedConfidence > 1 ? parsedConfidence / 100 : parsedConfidence;
 
       try {
         const sagaResult = await executeWithRetry(async () => {
@@ -75,26 +85,32 @@ export const POST = withErrorHandler(
               userId,
               curriculumNodeId,
               error: sagaResult.error,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             })
           );
-          
-          if (sagaResult.error === 'STALE_OBJECT_STATE' || sagaResult.failedStep === 'lock_curriculum') {
-            return jsonError("Conflict: The curriculum map was updated mid-flight. Please refresh.", 409);
+
+          if (
+            sagaResult.error === "STALE_OBJECT_STATE" ||
+            sagaResult.failedStep === "lock_curriculum"
+          ) {
+            return jsonError(
+              "Conflict: The curriculum map was updated mid-flight. Please refresh.",
+              409
+            );
           }
-          
+
           return jsonError("Attendance recording failed", 502);
         }
 
         return jsonSuccess({ alreadyRecorded: false }, 201);
-
       } catch (error) {
         console.error(
           JSON.stringify({
-            message: "Uncaught transaction collision error in attendance logging",
+            message:
+              "Uncaught transaction collision error in attendance logging",
             error: error.message,
             userId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           })
         );
         return jsonError("Database lock isolation failure. Please retry.", 500);
