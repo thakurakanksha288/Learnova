@@ -14,6 +14,8 @@ import {
   markIdempotent,
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
+import { initializeFirebase } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -232,6 +234,12 @@ export const POST = withErrorHandler(async (req) => {
   // Database
   const db = await connectDb();
 
+  initializeFirebase();
+  const firestoreDb = admin.firestore();
+  const firestoreUserRef = firestoreDb
+    .collection("users")
+    .doc(decodedToken.uid);
+
   const users = db.collection("users");
 
   // Ensure unique indexes exist (idempotent, runs once per process)
@@ -272,6 +280,8 @@ export const POST = withErrorHandler(async (req) => {
             rollNo: sanitizedRollNo,
             email,
             firebaseUid: decodedToken.uid,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
           };
 
           if (faceDescriptor) {
@@ -321,6 +331,34 @@ export const POST = withErrorHandler(async (req) => {
                 error: err.message,
               });
             });
+          }
+        },
+      },
+      {
+        name: "write_firestore_profile",
+        execute: async (ctx) => {
+          const firestoreProfile = {
+            uid: decodedToken.uid,
+            email,
+            name: sanitizedName,
+            fullName: sanitizedName,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            role: decodedToken.role || "student",
+            registeredViaFace: true,
+          };
+
+          const existingProfile = await firestoreUserRef.get();
+          ctx._firestoreProfileExisted = existingProfile.exists;
+
+          await firestoreUserRef.set(firestoreProfile, { merge: true });
+          ctx._wroteFirestoreProfile = !existingProfile.exists;
+        },
+        compensate: async (ctx) => {
+          if (ctx._wroteFirestoreProfile) {
+            try {
+              await firestoreUserRef.delete();
+            } catch {}
           }
         },
       },

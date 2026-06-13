@@ -493,8 +493,6 @@ const StudentDashboard = () => {
     };
   }, [isMounted]);
 
-  // ── Event Handlers ─────────────────────────────────────────────────────
-
   const handleEvaluateQuiz = (scoreOutOfFive) => {
     const percentage = (scoreOutOfFive / 5) * 100;
 
@@ -772,6 +770,27 @@ const generateRoadmap = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const StatCard = ({ color, label, value }) => {
+  const styles = {
+    green:
+      "from-green-500/20 to-green-600/20 border-green-500/30 text-green-400",
+    red: "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400",
+    yellow:
+      "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 text-yellow-400",
+    blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
+  };
+
+  return (
+    <div
+      className={`bg-gradient-to-r ${styles[color]} border rounded-xl p-3 sm:p-4`}
+    >
+      <div className="text-[10px] sm:text-sm opacity-80">{label}</div>
+
+      <div className="text-base sm:text-xl font-bold">{value}</div>
     </div>
   );
 };
