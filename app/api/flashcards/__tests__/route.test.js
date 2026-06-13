@@ -66,6 +66,12 @@ describe("POST /api/flashcards - Zod Validation and Security", () => {
     );
 
     const res = await POST(req);
-    expect(res.status).toBe(500); // generic Error mapped to 500 in withErrorHandler
+    
+    // Updated to reflect the proper, structured 400 Bad Request response status code
+    expect(res.status).toBe(400); 
+    
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toBe("Too big: expected array to have <=50 items");
   });
 });

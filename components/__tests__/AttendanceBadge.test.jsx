@@ -4,15 +4,30 @@ import { vi } from "vitest";
 import AttendanceBadge from "../AttendanceBadge";
 
 vi.mock("framer-motion", async () => {
-  const React = await vi.importActual("react");
+  const actualReact = await vi.importActual("react");
+
+  // Helper to safely strip out motion-specific properties before rendering standard HTML tags
+  const stripMotionProps = (props) => {
+    const {
+      whileHover,
+      whileTap,
+      animate,
+      initial,
+      exit,
+      transition,
+      variants,
+      ...cleanProps
+    } = props;
+    return cleanProps;
+  };
 
   return {
     motion: {
-      article: React.forwardRef(({ children, ...props }, ref) =>
-        React.createElement("article", { ref, ...props }, children)
+      article: actualReact.forwardRef(({ children, ...props }, ref) =>
+        actualReact.createElement("article", { ref, ...stripMotionProps(props) }, children)
       ),
-      div: React.forwardRef(({ children, ...props }, ref) =>
-        React.createElement("div", { ref, ...props }, children)
+      div: actualReact.forwardRef(({ children, ...props }, ref) =>
+        actualReact.createElement("div", { ref, ...stripMotionProps(props) }, children)
       ),
     },
   };
@@ -36,13 +51,10 @@ describe("AttendanceBadge Achievement Display", () => {
     render(<AttendanceBadge {...defaultProps} />);
 
     expect(screen.getByText("🏆")).toBeInTheDocument();
-
     expect(screen.getByText("Attendance Champion")).toBeInTheDocument();
-
     expect(
       screen.getByText("Maintain excellent attendance throughout the semester.")
     ).toBeInTheDocument();
-
     expect(screen.getByText("95% Attendance")).toBeInTheDocument();
   });
 

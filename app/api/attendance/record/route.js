@@ -26,7 +26,6 @@ export const POST = withErrorHandler(
         validatedData;
       const normalizedDate = date || getLocalDateKey();
 
-      // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
       const isTeacherOrAdmin =
         token.role === "teacher" || token.role === "admin";
       if (token.uid !== userId && !isTeacherOrAdmin) {
@@ -36,29 +35,30 @@ export const POST = withErrorHandler(
         );
       }
 
-      // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
       const parsedConfidence = Number(confidenceScore);
-      if (parsedConfidence < 60) {
+      
+      // Validation guard scaled cleanly against both structural percentage types
+      if ((parsedConfidence > 1 && parsedConfidence < 60) || (parsedConfidence <= 1 && parsedConfidence < 0.60)) {
         return jsonError(
           "Bad Request: Invalid or spoofed confidence score",
           400
         );
       }
 
-      // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
-      const normalizedConfidence = parsedConfidence / 100;
+      // Automatically scale scores down to decimal representation only if provided as whole integers
+      const executionConfidence = parsedConfidence > 1 ? parsedConfidence / 100 : parsedConfidence;
 
       try {
-        // 4. Record attendance using the domain service wrapped with the Deadlock Retry Utility
         const sagaResult = await executeWithRetry(async () => {
           return await AttendanceService.recordAttendance(
             {
               userId,
               studentName,
               email,
-              confidenceScore: normalizedConfidence, // Using normalized value consistently
+              confidenceScore: executionConfidence,
               normalizedDate,
-              curriculumNodeId, // Ensure structural context links to the curriculum node
+              // Only inject key-pairs if they were explicit parts of the incoming request payload
+              ...(curriculumNodeId !== undefined ? { curriculumNodeId } : {}),
             },
             token
           );

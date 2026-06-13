@@ -75,22 +75,24 @@ export const GET = withErrorHandler(async (request) => {
           )
         : "N/A";
 
-    // Self-healing check: Trigger low-attendance notification if rate is below 75%
+    // 1. Critical Check: Trigger low-attendance notification if rate is below 75%
     if (attendanceRate < 75) {
-      // Check if alert already exists within the last 24 hours
-      const oneDayAgo = new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ).toISOString();
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
       const existingAlerts = await db
         .collection("notifications")
         .where("recipientId", "==", parentId)
         .where("studentId", "==", studentId)
-        .where("type", "==", "low_attendance")
-        .where("createdAt", ">=", oneDayAgo)
-        .limit(1)
         .get();
 
-      if (existingAlerts.empty) {
+      const hasRecentAlert = existingAlerts.docs && existingAlerts.docs.length > 0
+        ? existingAlerts.docs.some(doc => {
+            const data = doc.data();
+            return data.type === "low_attendance" && (!data.createdAt || data.createdAt >= oneDayAgo);
+          })
+        : false;
+
+      if (!hasRecentAlert) {
         await db.collection("notifications").add({
           recipientId: parentId,
           studentId,
@@ -100,46 +102,50 @@ export const GET = withErrorHandler(async (request) => {
           read: false,
         });
       }
-    }
-
-    // Early warning check: Trigger warning if projected attendance is below 75%
-    const recordsQuery = await db
-      .collection("attendance_records")
-      .where("userId", "==", studentId)
-      .get();
-    
-    const studentRecords = [];
-    recordsQuery.docs.forEach((doc) => {
-      const data = doc.data();
-      studentRecords.push({
-        date: data.date,
-        status: data.status || "present",
-      });
-    });
-
-    const prediction = predictStudentAttendance(studentRecords);
-    if (prediction.riskLevel === "high") {
-      const oneDayAgo = new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ).toISOString();
-      const existingWarningAlerts = await db
-        .collection("notifications")
-        .where("recipientId", "==", parentId)
-        .where("studentId", "==", studentId)
-        .where("type", "==", "attendance_warning")
-        .where("createdAt", ">=", oneDayAgo)
-        .limit(1)
+    } 
+    // 2. Early Warning Check: Trigger warning if projected attendance is below 75%
+    else {
+      const recordsQuery = await db
+        .collection("attendance_records")
+        .where("userId", "==", studentId)
         .get();
-
-      if (existingWarningAlerts.empty) {
-        await db.collection("notifications").add({
-          recipientId: parentId,
-          studentId,
-          message: `Early Warning: ${studentName}'s attendance is projected to drop to ${prediction.projectedPercentage}%, which is below the 75% required threshold.`,
-          type: "attendance_warning",
-          createdAt: new Date().toISOString(),
-          read: false,
+      
+      const studentRecords = [];
+      recordsQuery.docs.forEach((doc) => {
+        const data = doc.data();
+        studentRecords.push({
+          date: data.date,
+          status: data.status || "present",
         });
+      });
+
+      const prediction = predictStudentAttendance(studentRecords);
+      if (prediction.riskLevel === "high") {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        const existingWarningAlerts = await db
+          .collection("notifications")
+          .where("recipientId", "==", parentId)
+          .where("studentId", "==", studentId)
+          .get();
+
+        const hasRecentWarning = existingWarningAlerts.docs && existingWarningAlerts.docs.length > 0
+          ? existingWarningAlerts.docs.some(doc => {
+              const data = doc.data();
+              return data.type === "attendance_warning" && (!data.createdAt || data.createdAt >= oneDayAgo);
+            })
+          : false;
+
+        if (!hasRecentWarning) {
+          await db.collection("notifications").add({
+            recipientId: parentId,
+            studentId,
+            message: `Early Warning: ${studentName}'s attendance is projected to drop to ${prediction.projectedPercentage}%, which is below the 75% required threshold.`,
+            type: "attendance_warning",
+            createdAt: new Date().toISOString(),
+            read: false,
+          });
+        }
       }
     }
 
